@@ -1,0 +1,50 @@
+div.post {
+    border: 1px solid black;
+    margin: 10px;
+    padding: 10px;
+}
+div.question.container {
+    border-color: #009;
+}
+div.answer.container {
+    border-color: #009;
+}
+div.answer.body {
+    margin-left: 5%;
+}
+div.scoreaccepted {
+    font-weight: bold;
+    float: left;
+    margin-right: 5px;
+    padding: 5px;
+    border: 2px solid #0f0;
+    color: #0f0;
+}
+div.score {
+    font-weight: bold;
+    float: left;
+    margin-right: 5px;
+    padding: 5px;
+    border: 2px solid #bbb;
+}
+div.date {
+    color: #bbb;
+}
+div.postdate {
+    margin-left: 30%;
+    padding: 5px;
+    color: #bbb;
+}
+div.user {
+    float: right;
+    padding: 5px;
+    border: 1px solid #bbb;
+}
+div.comment {
+    color: #888;
+}
+div.comment.container {
+    margin-left: 7%;
+    padding: 7px;
+    border-color: #009;
+}
