@@ -1,7 +1,9 @@
 # Miscellaneous functions
 
 from pysqlite2 import dbapi2 as sqlite3
+import pystache
 
+stackexchange_dump_path="/home/itoni/Downloads/stackexchange-to-zim-converter/blender.stackexchange.com/"
 tempdir="temp/"
 dbfile=tempdir+"stackexchange-dump.sqlite3"
 
@@ -31,3 +33,29 @@ def init_db():
     #connection.row_factory = sqlite3.Row
     cursor = connection.cursor()
     return (connection,cursor)
+
+user_template=pystache.parse(u"""{{#Id}}<div class=\"user\"><a href="user{{Id}}.html">{{DisplayName}}</a></div>{{/Id}}""")
+
+def render_user(cursor, Id):
+    cursor.execute('select * from Users where Id=?', (Id,))
+    user=cursor.fetchone()
+    user_html=pystache.render(user_template,user)
+    return user_html
+
+def select_comments_for_post(cursor,PostId):
+    cursor.execute('select * from Comments where PostId=?', (PostId,))
+    comments=cursor.fetchall()
+    return comments
+
+def select_post(cursor,Id):
+    cursor.execute('select * from Posts where Id=?', (Id,))
+    post=cursor.fetchone()
+    
+    post["comments"]=select_comments_for_post(cursor,Id)
+    for post_comment in post["comments"]:
+        post_comment["User_html"]=render_user(cursor,post_comment["UserId"])
+
+    post["OwnerUser_html"]=render_user(cursor,post["OwnerUserId"])
+    post["LastEditorUser_html"]=render_user(cursor,post["LastEditorUserId"])
+
+    return post

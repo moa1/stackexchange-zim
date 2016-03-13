@@ -1,8 +1,8 @@
 #!/usr/bin/python
+# -*- coding:utf-8 -*-
 
-# TODO: make a page for each Tag in Tags.xml
-# TODO: parse Tags and link them to its Tag page
 # TODO: make that HTML <code> is rendered with a grey background.
+# TODO: make that external image alternative texts are shown in a different color, maybe with a link to the external image.
 
 from utils import *
 import pystache
@@ -12,53 +12,28 @@ import pickle
 
 #PostTypeId="1" means question
 #PostTypeId="2" means answer
-#PostTypeId="4" means tag description, with Tag.ExcerptPostId==Post.Id
+#PostTypeId="4" means tag excerpt, with Tag.ExcerptPostId==Post.Id
 #PostTypeId="5" means tag wiki, with Tag.WikiPostId==Post.Id
 #PostTypeId="6" means election text
 #PostTypeId="7" means ? TODO:
 
-user_template=pystache.parse(u"""<div class=\"user\"><a href="user{{Id}}.html">{{DisplayName}}</a></div>""")
-
-def render_user(cursor, Id):
-    cursor.execute('select * from Users where Id=?', (Id,))
-    user=cursor.fetchone()
-    user_html=pystache.render(user_template,user)
-    return user_html
-
 answers_template=pystache.parse(u"""{{#answers}}
 <div class=\"answer post container\">
+<a class="answerlink" name="{{Id}}" href="#{{Id}}">¶</a>
 {{#accepted}}<div class=\"scoreaccepted\">{{Score}}</div>{{/accepted}}
 {{^accepted}}<div class=\"score\">{{Score}}</div>{{/accepted}}
 <div class=\"answer body\">{{{Body}}}</div>
-<p>
-  {{{OwnerUser_html}}}
-  {{{LastEditorUser_html}}}
-  <div class=\"postdate\">{{LastActivityDate}}</div>
-</p>
+{{{OwnerUser_html}}}
+{{{LastEditorUser_html}}}
+<div class=\"postdate\">{{LastActivityDate}}</div>
 {{#comments}}
 <div class=\"comment container\">{{{User_html}}}{{{Text}}}</div>
 {{/comments}}
 </div>
 {{/answers}}""")
 
-def select_comments_for_post(cursor,PostId):
-    cursor.execute('select * from Comments where PostId=?', (PostId,))
-    posts=cursor.fetchall()
-    return posts
-
 def select_answer(cursor, Id):
-    answer_comments=select_comments_for_post(cursor,Id)
-    for answer_comment in answer_comments:
-        answer_comment["User_html"]=render_user(cursor,answer_comment["UserId"])
-
-    cursor.execute('select * from Posts where Id=?', (Id,))
-    answer=cursor.fetchone()
-    
-    answer["OwnerUser_html"]=render_user(cursor,answer["OwnerUserId"])
-    answer["LastEditorUser_html"]=render_user(cursor,answer["LastEditorUserId"])
-    answer["comments"]=answer_comments
-
-    return answer
+    return select_post(cursor,Id)
 
 def select_answers_for_question(cursor,QuestionId):
     cursor.execute('select AcceptedAnswerId from Posts where Id=?', (QuestionId,))
@@ -91,38 +66,36 @@ def render_answers_for_question(cursor,QuestionId):
     return answers_html
 
 question_template=pystache.parse(u"""<div class=\"question container\">
-<p>Tags:{{Tags}}</p>
+<p>
+Tags:
+{{#Tags}}
+<a href="tag{{Id}}.html">{{TagName}}</a>
+{{/Tags}}
+</p>
 <h1>{{Title}}</h1>
 <div class=\"score\">{{Score}}</div>
 <div class=\"question body\">{{{Body}}}</div>
+{{{OwnerUser_html}}}
+{{{LastEditorUser_html}}}
+<div class=\"postdate\">{{LastActivityDate}}</div>
 {{#comments}}
 <div class=\"comment container\">{{{User_html}}}{{{Text}}}</div>
 {{/comments}}
-<p>
-  {{{OwnerUser_html}}}
-  {{{LastEditorUser_html}}}
-  <div class=\"postdate\">{{LastActivityDate}}</div>
-</p>
 </div>
 <p><strong>{{AnswerCount}} answers:</strong></p>""")
 
 def select_question(cursor, Id):
-    question_comments=select_comments_for_post(cursor,Id)
-    for question_comment in question_comments:
-        question_comment["User_html"]=render_user(cursor,question_comment["UserId"])
-
-    cursor.execute('select * from Posts where Id=?', (Id,))
-    question=cursor.fetchone()
+    question=select_post(cursor,Id)
     
-    question["OwnerUser_html"]=render_user(cursor,question["OwnerUserId"])
-    question["LastEditorUser_html"]=render_user(cursor,question["LastEditorUserId"])
-    question["comments"]=question_comments
+    cursor.execute('select * from Tags where Id in (select TagId from PostsTags where PostId=?)', (Id,))
+    question["Tags"]=cursor.fetchall()
 
     return question
     
 post_template=pystache.parse(u"""
 <html>
   <head>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
     <title>{{Title}}</title>
     <link href="se.css" rel="stylesheet" type="text/css">
   </head>
@@ -144,31 +117,27 @@ def render_post(cursor, Id):
     
     return post_html
 
-
-(connection,cursor)=init_db()
-
-
-
 def make_posts_html(limit=None):
     if limit:
         cursor.execute('select Id from Posts where PostTypeId="1" limit '+str(limit))
     else:
         cursor.execute('select Id from Posts where PostTypeId="1"')
     post_ids = [row["Id"] for row in cursor]
+    max_Id=max(post_ids)
     for post_id in post_ids:
-        print post_id
+        print "Post",post_id,"/",max_Id
 
-        f=codecs.open(tempdir+"content/post"+str(post_id)+".html", "w", "utf-8")
-        f.write(render_post(cursor, post_id))
-        f.close()
+        with codecs.open(tempdir+"content/post"+str(post_id)+".html", "w", "utf-8") as f:
+            f.write(render_post(cursor, post_id))
 
 (connection,cursor)=init_db()
 
-#import profile
-#profile.run("make_posts_html()")
-make_posts_html()
+with connection:
+    print "Posts"
+    #import profile
+    #profile.run("make_posts_html()")
+    make_posts_html()
 
-#post_id=882
-#f=codecs.open(tempdir+"content/post"+str(post_id)+".html", "w", "utf-8")
-#f.write(render_post(cursor, post_id))
-#f.close()
+#for post_id in (1,6,882):
+#    with codecs.open(tempdir+"content/post"+str(post_id)+".html", "w", "utf-8") as f:
+#        f.write(render_post(cursor, post_id))

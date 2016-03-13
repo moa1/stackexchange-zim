@@ -9,7 +9,7 @@ import pickle
 
 import sys #debug
 
-def fill_table(xmlfile, table, attributes,connection):
+def fill_table(file, table, attributes,connection):
     parser = etree.XMLPullParser(events=('start', 'end'),tag="row")
     events = parser.read_events()
 
@@ -21,7 +21,7 @@ def fill_table(xmlfile, table, attributes,connection):
     print statement
     
     while True:
-        buf=xmlfile.read(100000)
+        buf=file.read(100000)
         if buf=="":
             break
         parser.feed(buf)
@@ -35,13 +35,11 @@ def fill_table(xmlfile, table, attributes,connection):
                 row["Id"]=int(row["Id"])
                 #print row
                 connection.execute(statement, row)
-                print row["Id"]
+                print "Insert",table,row["Id"]
                 elem.clear()
 
     root = parser.close()
     #print etree.tostring(root)
-
-xml_directory="/home/itoni/Downloads/stackexchange-to-zim-converter/blender.stackexchange.com/"
 
 f=open(tempdir+"table_attributes.pickle","r")
 table_attributes=pickle.load(f)
@@ -50,11 +48,10 @@ f.close()
 connection = sqlite3.connect(dbfile)
 
 #tables=["Badges","PostHistory","Posts","Users","Comments","PostLinks","Tags","Votes"]
-tables=["Users","Posts","Comments"]
+tables=["Users","Posts","Comments","Tags"]
 
 for table in tables:
     #codec "utf-8-sig" removes the BOM if present, which is required for lxml
-    f=codecs.open(xml_directory+table+".xml", "r", "utf-8-sig")
-
-    with connection:
-        fill_table(f,table,table_attributes[table],connection)
+    with codecs.open(stackexchange_dump_path+table+".xml", "r", "utf-8-sig") as f:
+        with connection:
+            fill_table(f,table,table_attributes[table],connection)

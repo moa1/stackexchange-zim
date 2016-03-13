@@ -12,6 +12,9 @@ div.answer.container {
 div.answer.body {
     margin-left: 5%;
 }
+.answerlink{
+    float: right;
+}
 div.scoreaccepted {
     font-weight: bold;
     float: left;
@@ -39,6 +42,10 @@ div.user {
     float: right;
     padding: 5px;
     border: 1px solid #bbb;
+}
+div.floatleft {
+    float: left;
+    padding: 5px;
 }
 div.comment {
     color: #888;

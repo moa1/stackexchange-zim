@@ -10,15 +10,26 @@ from utils import *
 import pickle
 
 def get_all_attributes(file):
-    tree = etree.parse(file)
-    root = tree.getroot()
+    "Return the list of all attribute names the (XML) file has as row elements."
+    parser = etree.XMLPullParser(events=('start', 'end'),tag="row")
+    events = parser.read_events()
 
     all_keys = {}
 
-    for row in root:
-        keys = row.keys()
-        for key in keys:
-            all_keys[key] = True
+    while True:
+        buf=file.read(100000)
+        if buf=="":
+            break
+        parser.feed(buf)
+        for action, elem in events:
+            if action=="end":
+                row={}
+                for name, value in elem.items():
+                    all_keys[name]=True
+                elem.clear()
+
+    root = parser.close()
+
     keys = all_keys.keys()
     keys.sort()
     return keys
@@ -31,7 +42,17 @@ def create_table(cursor, table_name, attributes):
     cursor.execute(statement)
 
 #tables=["Badges","PostHistory","Posts","Users","Comments","PostLinks","Tags","Votes"]
-tables=["Users","Posts","Comments"]
+tables=["Users","Posts","Comments","Tags"]
+
+table_attributes={}
+for table in tables:
+    print table
+    with open(stackexchange_dump_path+"/"+table+".xml","r") as f:
+        attributes=get_all_attributes(f)
+        table_attributes[table]=attributes
+
+with open(tempdir+"table_attributes.pickle","w") as f:
+    pickle.dump(table_attributes,f)
 
 try:
     os.unlink(dbfile)
@@ -40,17 +61,14 @@ except:
 conn = sqlite3.connect(dbfile)
 cursor = conn.cursor()
 
-table_attributes={}
 for table in tables:
-    f=open("/home/itoni/Downloads/stackexchange-to-zim-converter/blender.stackexchange.com/"+table+".xml","r")
-    attributes=get_all_attributes(f)
+    attributes=table_attributes[table]
     create_table(cursor,table,attributes)
-    table_attributes[table]=attributes
+
+cursor.execute("create table PostsTags(PostId integer, TagId integer, primary key (PostId, TagId))")
 
 cursor.execute("create index Posts_OwnerUserId on Posts(OwnerUserId)")
 cursor.execute("create index Posts_ParentId on Posts(ParentId)")
 cursor.execute("create index Comments_PostId on Comments(PostId)")
     
-f=open(tempdir+"table_attributes.pickle","w")
-pickle.dump(table_attributes,f)
-f.close()
+conn.close()
