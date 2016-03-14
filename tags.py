@@ -7,7 +7,7 @@ from pysqlite2 import dbapi2 as sqlite3
 import codecs
 import pickle
 
-tag_template=pystache.parse(u"""
+tag_template=pystache.parse(u"""<!DOCTYPE html>
 <html>
   <head>
     <title>{{TagName}}</title>
@@ -43,7 +43,7 @@ tag_template=pystache.parse(u"""
 {{/WikiPost}}
 <h2>Questions with tag &lt;{{TagName}}&gt;</h2>
 {{#questions}}
-<p><a href="{{{html_file}}}">{{Title}}</a></p>
+<p><a class="internallink" href="post{{Id}}.html">{{Title}}</a></p>
 {{/questions}}
   </body>
 </html>
@@ -62,8 +62,6 @@ def render_tag(cursor,Id):
 
     cursor.execute('select * from Posts where Id in (select PostId from PostsTags where TagId=?)', (Id,))
     tag["questions"]=cursor.fetchall()
-    for question in tag["questions"]:
-        question["html_file"]="post"+str(question["Id"])+".html"
 
     tag_html=pystache.render(tag_template,tag)
     return tag_html

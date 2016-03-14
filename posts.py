@@ -1,7 +1,6 @@
 #!/usr/bin/python
 # -*- coding:utf-8 -*-
 
-# TODO: make that HTML <code> is rendered with a grey background.
 # TODO: make that external image alternative texts are shown in a different color, maybe with a link to the external image.
 
 from utils import *
@@ -19,13 +18,14 @@ import pickle
 
 answers_template=pystache.parse(u"""{{#answers}}
 <div class=\"answer post container\">
-<a class="answerlink" name="{{Id}}" href="#{{Id}}">¶</a>
-{{#accepted}}<div class=\"scoreaccepted\">{{Score}}</div>{{/accepted}}
-{{^accepted}}<div class=\"score\">{{Score}}</div>{{/accepted}}
+<a class="internallink answerlink" name="{{Id}}" href="#{{Id}}">¶</a>
+<span class=\"score\">{{Score}}</span>
+{{#accepted}}<span class=\"scoreaccepted\">X</span>{{/accepted}}
 <div class=\"answer body\">{{{Body}}}</div>
 {{{OwnerUser_html}}}
 {{{LastEditorUser_html}}}
-<div class=\"postdate\">{{LastActivityDate}}</div>
+<span class=\"postdate\">{{LastActivityDate}}</span>
+<br style="line-height:2em;" />
 {{#comments}}
 <div class=\"comment container\">{{{User_html}}}{{{Text}}}</div>
 {{/comments}}
@@ -65,19 +65,21 @@ def render_answers_for_question(cursor,QuestionId):
     answers_html=pystache.render(answers_template,{"answers":answers})
     return answers_html
 
-question_template=pystache.parse(u"""<div class=\"question container\">
-<p>
+question_template=pystache.parse(u"""
+<div class=\"tag\"><span class=\"tag post\">
 Tags:
 {{#Tags}}
-<a href="tag{{Id}}.html">{{TagName}}</a>
+<a class="internallink" href="tag{{Id}}.html">{{TagName}}</a>
 {{/Tags}}
-</p>
+</span></div>
+<div class=\"question post container\">
 <h1>{{Title}}</h1>
 <div class=\"score\">{{Score}}</div>
 <div class=\"question body\">{{{Body}}}</div>
 {{{OwnerUser_html}}}
 {{{LastEditorUser_html}}}
-<div class=\"postdate\">{{LastActivityDate}}</div>
+<span class=\"postdate\">{{LastActivityDate}}</span>
+<br style="line-height:2em;" />
 {{#comments}}
 <div class=\"comment container\">{{{User_html}}}{{{Text}}}</div>
 {{/comments}}
@@ -92,7 +94,7 @@ def select_question(cursor, Id):
 
     return question
     
-post_template=pystache.parse(u"""
+post_template=pystache.parse(u"""<!DOCTYPE html>
 <html>
   <head>
     <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
@@ -117,12 +119,11 @@ def render_post(cursor, Id):
     
     return post_html
 
-def make_posts_html(limit=None):
-    if limit:
-        cursor.execute('select Id from Posts where PostTypeId="1" limit '+str(limit))
-    else:
-        cursor.execute('select Id from Posts where PostTypeId="1"')
+def make_posts_html(only_ids=None):
+    cursor.execute('select Id from Posts where PostTypeId="1"')
     post_ids = [row["Id"] for row in cursor]
+    if only_ids:
+        post_ids=only_ids
     max_Id=max(post_ids)
     for post_id in post_ids:
         print "Post",post_id,"/",max_Id
@@ -137,7 +138,3 @@ with connection:
     #import profile
     #profile.run("make_posts_html()")
     make_posts_html()
-
-#for post_id in (1,6,882):
-#    with codecs.open(tempdir+"content/post"+str(post_id)+".html", "w", "utf-8") as f:
-#        f.write(render_post(cursor, post_id))

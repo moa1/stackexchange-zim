@@ -9,8 +9,6 @@ from pysqlite2 import dbapi2 as sqlite3
 import codecs
 import pickle
 
-#user["AboutMe"]=unescape_html(user["AboutMe"],True)
-
 def select_user(cursor, Id):
     cursor.execute('select * from Users where Id=?', (Id,))
     user=cursor.fetchone()
@@ -35,7 +33,7 @@ def select_user(cursor, Id):
 
     return user
 
-user_template=pystache.parse(u"""
+user_template=pystache.parse(u"""<!DOCTYPE html>
 <html>
   <head>
     <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
@@ -43,28 +41,32 @@ user_template=pystache.parse(u"""
     <link href="se.css" rel="stylesheet" type="text/css">
   </head>
     <body>
-<h1>User {{DisplayName}}</h1>
-<div class=\"user\">{{DisplayName}}</div>
-Creation: <div class=\"date\">{{CreationDate}}</div>
+<div class=\"userinfo\">
+<p>{{DisplayName}}</p>
+<p>Creation: {{CreationDate}}</p>
 <p>Reputation: {{Reputation}}</p>
-<p>Homepage: <a href="{{WebsiteUrl}}">{{WebsiteUrl}}</a></p>
-<p>Location: {{Location}}</p>
-<p>Age: {{Age}}</p>
+<p>Homepage: {{#WebsiteUrl}}<a href="{{WebsiteUrl}}">{{WebsiteUrl}}</a>{{/WebsiteUrl}}</p>
+<p>Location: {{#Location}}{{Location}}{{/Location}}</p>
+<p>Age: {{#Age}}{{Age}}{{/Age}}</p>
 <p>Up votes: {{UpVotes}} Down votes: {{DownVotes}}</p>
-<p><a href="#questions">Questions: {{questions_count}}</a> <a href="#answers">Answers: {{answers_count}}</a> <a href="#tags">Tags: {{tags_count}}</a></p>
+<p><a class="internallink" href="#questions">Questions: {{questions_count}}</a> <a class="internallink" href="#answers">Answers: {{answers_count}}</a> <a class="internallink" href="#tags">Tags: {{tags_count}}</a></p>
+</div>
+<h1>User {{DisplayName}}</h1>
 <h2>About Me</h2>
-{{{AboutMe}}}
-<h2>My {{questions_count}} questions<a class="internallink" name="questions" href="#questions">¶</a></h2>
+<div class=\"aboutme post\">
+{{#AboutMe}}{{{AboutMe}}}{{/AboutMe}}
+</div>
+<h2>My {{questions_count}} questions<a class="internallink" name="questions" href="#questions"><span style="float:right;">¶</span></a></h2>
 {{#questions}}
-<p><a href="post{{Id}}.html">{{Title}}</a></p>
+<p><a class="internallink" href="post{{Id}}.html">{{Title}}</a></p>
 {{/questions}}
-<h2>My {{answers_count}} answers<a class="internallink" name="answers" href="#answers">¶</a></h2>
+<h2>My {{answers_count}} answers<a class="internallink" name="answers" href="#answers"><span style="float:right;">¶</span></a></h2>
 {{#answers}}
-<p><a href="post{{QuestionId}}.html#{{Id}}">{{QuestionTitle}}</a></p>
+<p><a class="internallink" href="post{{QuestionId}}.html#{{Id}}">{{QuestionTitle}}</a></p>
 {{/answers}}
-<h2>My {{tags_count}} tags<a class="internallink" name="tags" href="#tags">¶</a></h2>
+<h2>My {{tags_count}} tags<a class="internallink" name="tags" href="#tags"><span style="float:right;">¶</span></a></h2>
 {{#tags}}
-<p><a href="tag{{Id}}.html">{{TagName}}</a></p>
+<p><a class="internallink" href="tag{{Id}}.html">{{TagName}}</a></p>
 {{/tags}}
   </body>
 </html>""")
@@ -73,12 +75,11 @@ def render_user_home(user):
     user_html=pystache.render(user_template,user)
     return user_html
 
-def make_users_html(limit=None):
-    if limit:
-        cursor.execute('select Id from Users limit '+str(limit))
-    else:
-        cursor.execute('select Id from Users')
+def make_users_html(only_ids=None):
+    cursor.execute('select Id from Users')
     user_ids = [row["Id"] for row in cursor]
+    if only_ids:
+        user_ids=only_ids
     max_Id=max(user_ids)
     for user_id in user_ids:
         user=select_user(cursor, user_id)

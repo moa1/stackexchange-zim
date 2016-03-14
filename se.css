@@ -1,57 +1,95 @@
-div.post {
+.userinfo {
+    float: right;
+    background-color: #aaf;
+    line-height: 1ex;
+    padding: 0.5ex;
+}
+.aboutme.post {
+    padding: 1ex;
+    background-color: #ccc;
+}
+.tag{
+    text-align: right;
+}
+.tag.post {
+    padding: 3px;
+    background-color: #ff7;
+}
+.question.post {
+}
+.answer.post {
     border: 1px solid black;
-    margin: 10px;
+    margin-bottom: 10px;
     padding: 10px;
 }
-div.question.container {
+.question.body {
+    margin-left: 4ex;
+}
+.answer.body {
+    margin-left: 5ex;
+}
+.scoreaccepted {
+    background-color: #afa;
+    color: #070;
+    padding: 1ex;
+    margin-right: -1ex;
+    float: left;
+    position: relative;top:5ex;left:-2ex;
+}
+.score {
+    background-color: #afa;
+    color: #070;
+    padding: 1ex;
+    margin-right: -1ex;
+    float: left;
+}
+.date {
+    color: #bbb;
+}
+.postdate {
+    float: right;
+    padding: 6px;
+    color: #bbb;
+}
+.user {
+    float: right;
+    padding: 4px;
+    background-color: #aaf;
+    border: 1px solid #bbb;
+}
+.floatleft {
+    float: left;
+    padding: 5px;
+}
+.comment {
+    color: #888;
+}
+.comment.container {
+    margin-left: 8ex;
+    padding: 7px;
     border-color: #009;
 }
-div.answer.container {
-    border-color: #009;
+a{/*all external links are in italic font*/
+    font-style: italic;
 }
-div.answer.body {
-    margin-left: 5%;
+.internallink{/*internal links are in italic font*/
+    font-style: normal;
 }
 .answerlink{
     float: right;
 }
-div.scoreaccepted {
-    font-weight: bold;
-    float: left;
-    margin-right: 5px;
-    padding: 5px;
-    border: 2px solid #0f0;
-    color: #0f0;
+code{
+    padding: 2px;
+    background: #ccc;
 }
-div.score {
-    font-weight: bold;
-    float: left;
-    margin-right: 5px;
-    padding: 5px;
-    border: 2px solid #bbb;
+kbd{
+    padding: 4px;
+    background: #cc0;
 }
-div.date {
-    color: #bbb;
+li{
+    color: #007;
 }
-div.postdate {
-    margin-left: 30%;
-    padding: 5px;
-    color: #bbb;
-}
-div.user {
-    float: right;
-    padding: 5px;
-    border: 1px solid #bbb;
-}
-div.floatleft {
-    float: left;
-    padding: 5px;
-}
-div.comment {
-    color: #888;
-}
-div.comment.container {
-    margin-left: 7%;
-    padding: 7px;
-    border-color: #009;
+img{
+    background: #f77;
+    border: 2px dashed #f00;
 }

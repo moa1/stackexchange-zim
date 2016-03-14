@@ -34,7 +34,7 @@ def init_db():
     cursor = connection.cursor()
     return (connection,cursor)
 
-user_template=pystache.parse(u"""{{#Id}}<div class=\"user\"><a href="user{{Id}}.html">{{DisplayName}}</a></div>{{/Id}}""")
+user_template=pystache.parse(u"""{{#Id}}<span class=\"user\"><a class="internallink" href="user{{Id}}.html">{{DisplayName}}</a></span>{{/Id}}""")
 
 def render_user(cursor, Id):
     cursor.execute('select * from Users where Id=?', (Id,))
@@ -43,7 +43,7 @@ def render_user(cursor, Id):
     return user_html
 
 def select_comments_for_post(cursor,PostId):
-    cursor.execute('select * from Comments where PostId=?', (PostId,))
+    cursor.execute('select * from Comments where PostId=? order by CreationDate', (PostId,))
     comments=cursor.fetchall()
     return comments
 
