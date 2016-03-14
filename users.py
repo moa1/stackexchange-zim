@@ -8,15 +8,17 @@ import pystache
 from pysqlite2 import dbapi2 as sqlite3
 import codecs
 import pickle
+import rewriteurl
 
-def select_user(cursor, Id):
-    cursor.execute('select * from Users where Id=?', (Id,))
-    user=cursor.fetchone()
+def select_user_home(cursor, Id):
+    user=select_user(cursor, Id)
+    if user["AboutMe"]:
+        user["AboutMe"]=rewriteurl.rewrite_urls(cursor,user["AboutMe"],stackexchange_domain)
 
     cursor.execute('select * from Posts where OwnerUserId=? and PostTypeId="1"', (Id,))
     user["questions"]=cursor.fetchall()
     user["questions_count"]=len(user["questions"])
-        
+    
     cursor.execute('select Id,ParentId from Posts where OwnerUserId=? and PostTypeId="2"', (Id,))
     user["answers"]=cursor.fetchall()
     user["answers_count"]=len(user["answers"])
@@ -58,11 +60,11 @@ user_template=pystache.parse(u"""<!DOCTYPE html>
 </div>
 <h2>My {{questions_count}} questions<a class="internallink" name="questions" href="#questions"><span style="float:right;">¶</span></a></h2>
 {{#questions}}
-<p><a class="internallink" href="post{{Id}}.html">{{Title}}</a></p>
+<p><a class="internallink" href="question{{Id}}.html">{{Title}}</a></p>
 {{/questions}}
 <h2>My {{answers_count}} answers<a class="internallink" name="answers" href="#answers"><span style="float:right;">¶</span></a></h2>
 {{#answers}}
-<p><a class="internallink" href="post{{QuestionId}}.html#{{Id}}">{{QuestionTitle}}</a></p>
+<p><a class="internallink" href="question{{QuestionId}}.html#{{Id}}">{{QuestionTitle}}</a></p>
 {{/answers}}
 <h2>My {{tags_count}} tags<a class="internallink" name="tags" href="#tags"><span style="float:right;">¶</span></a></h2>
 {{#tags}}
@@ -82,11 +84,11 @@ def make_users_html(only_ids=None):
         user_ids=only_ids
     max_Id=max(user_ids)
     for user_id in user_ids:
-        user=select_user(cursor, user_id)
-        print "User",user["Id"],"/",max_Id
+        user_home=select_user_home(cursor, user_id)
+        print "User",user_home["Id"],"/",max_Id
 
-        with codecs.open(tempdir+"content/user"+str(user["Id"])+".html", "w", "utf-8") as f:
-            f.write(render_user_home(user))
+        with codecs.open(tempdir+"content/user"+str(user_home["Id"])+".html", "w", "utf-8") as f:
+            f.write(render_user_home(user_home))
 
 (connection,cursor)=init_db()
 

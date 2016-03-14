@@ -67,11 +67,11 @@ def write_users_index_html(cursor):
 
     write_index_html("Users",users,tempdir+"content","index_users%s.html")
 
-def write_posts_index_html(cursor):
-    cursor.execute('select Id,Title,"post"||Id||".html" as Link from Posts where PostTypeId="1" order by Title')
-    posts=cursor.fetchall()
+def write_questions_index_html(cursor):
+    cursor.execute('select Id,Title,"question"||Id||".html" as Link from Posts where PostTypeId="1" order by Title')
+    questions=cursor.fetchall()
 
-    write_index_html("Posts",posts,tempdir+"content","index_posts%s.html")
+    write_index_html("Questions",questions,tempdir+"content","index_questions%s.html")
 
 def write_tags_index_html(cursor):
     cursor.execute('select Id,TagName as Title,"tag"||Id||".html" as Link from Tags order by TagName')
@@ -85,7 +85,7 @@ def write_tags_index_html(cursor):
 with connection:
     print "Users Index"
     write_users_index_html(cursor)
-    print "Posts Index"
-    write_posts_index_html(cursor)
+    print "Questions Index"
+    write_questions_index_html(cursor)
     print "Tags Index"
     write_tags_index_html(cursor)

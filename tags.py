@@ -41,7 +41,7 @@ tag_template=pystache.parse(u"""<!DOCTYPE html>
 {{/WikiPost}}
 <h2>Questions with tag &lt;{{TagName}}&gt;</h2>
 {{#questions}}
-<p><a class="internallink" href="post{{Id}}.html">{{Title}}</a></p>
+<p><a class="internallink" href="question{{Id}}.html">{{Title}}</a></p>
 {{/questions}}
   </body>
 </html>
