@@ -1,7 +1,7 @@
 #!/usr/bin/python
 # -*- coding:utf-8 -*-
 
-# TODO: make that HTML <code> is rendered with a grey background.
+# TODO: add Badges.xml to display the badges that a user has received.
 
 from utils import *
 import pystache
@@ -26,7 +26,7 @@ def select_user(cursor, Id):
         row["QuestionId"]=question["Id"]
         row["QuestionTitle"]=question["Title"]
 
-    cursor.execute('select (select Id from Tags where ExcerptPostId=Posts.Id or WikiPostId=Posts.Id) as Id, (select TagName from Tags where ExcerptPostId=Posts.Id or WikiPostId=Posts.Id) as TagName from Posts where OwnerUserId=? and PostTypeId in ("4","5") and TagName not NULL', (Id,))
+    cursor.execute('select distinct (select Id from Tags where ExcerptPostId=Posts.Id or WikiPostId=Posts.Id) as Id, (select TagName from Tags where ExcerptPostId=Posts.Id or WikiPostId=Posts.Id) as TagName from Posts where OwnerUserId=? and PostTypeId in ("4","5") and TagName not NULL', (Id,))
     user["tags"]=cursor.fetchall()
     user["tags"].sort(key=lambda x:x["TagName"])
     user["tags_count"]=len(user["tags"])

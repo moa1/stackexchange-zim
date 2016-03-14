@@ -25,7 +25,6 @@ tag_template=pystache.parse(u"""<!DOCTYPE html>
 {{#comments}}
 <div class=\"comment container\">{{{User_html}}}{{{Text}}}</div>
 {{/comments}}
-</div>
 
 {{/ExcerptPost}}
 {{#WikiPost}}
@@ -38,7 +37,6 @@ tag_template=pystache.parse(u"""<!DOCTYPE html>
 {{#comments}}
 <div class=\"comment container\">{{{User_html}}}{{{Text}}}</div>
 {{/comments}}
-</div>
 
 {{/WikiPost}}
 <h2>Questions with tag &lt;{{TagName}}&gt;</h2>
