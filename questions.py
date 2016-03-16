@@ -56,8 +56,10 @@ def select_question(cursor, Id):
     return question
 
 
-def render_question(cursor, Id, renderer):
+def render_question(cursor, Id, renderer, prev_post_id, next_post_id):
     question=select_question(cursor,Id)
+    question["PrevPage"]=select_question(cursor,prev_post_id)
+    question["NextPage"]=select_question(cursor,next_post_id)
     return renderer.render("{{>question_html}}",question)
 
 def make_questions_html(only_ids=None):
@@ -68,11 +70,14 @@ def make_questions_html(only_ids=None):
     if only_ids:
         post_ids=only_ids
     max_Id=max(post_ids)
-    for post_id in post_ids:
+    len_post_ids=len(post_ids)
+    for (i,post_id) in enumerate(post_ids):
         print "Question",post_id,"/",max_Id
 
         with codecs.open(tempdir+"content/question"+str(post_id)+".html", "w", "utf-8") as f:
-            f.write(render_question(cursor, post_id, renderer))
+            prev_post_id=post_ids[(i-1)%len_post_ids]
+            next_post_id=post_ids[(i+1)%len_post_ids]
+            f.write(render_question(cursor, post_id, renderer, prev_post_id, next_post_id))
 
 (connection,cursor)=init_db()
 

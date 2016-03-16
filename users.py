@@ -10,8 +10,10 @@ import codecs
 import pickle
 import rewriteurl
 
-def select_user_home(cursor, Id):
+def select_user_home(cursor, Id, PrevUser, NextUser):
     user=select_user(cursor, Id)
+    user["PrevPage"]=PrevUser
+    user["NextPage"]=NextUser
     if user["AboutMe"]:
         user["AboutMe"]=rewriteurl.rewrite_urls(cursor,user["AboutMe"],stackexchange_domain)
 
@@ -43,6 +45,13 @@ user_template=pystache.parse(u"""<!DOCTYPE html>
     <link href="se.css" rel="stylesheet" type="text/css">
   </head>
     <body>
+<div class="linkheader">
+{{#NextPage}}<a class="internallink" href="user{{Id}}.html">Next User</a>{{/NextPage}}
+{{#PrevPage}}<a class="internallink" href="user{{Id}}.html">Prev User</a>{{/PrevPage}}
+<a class="internallink" href="index_users.html">Users Index</a>
+<a class="internallink" href="index_questions.html">Questions Index</a>
+<a class="internallink" href="index_tags.html">Tags Index</a>
+</div>
 <div class=\"userinfo\">
 <p>{{DisplayName}}</p>
 <p>Creation: {{CreationDate}}</p>
@@ -82,10 +91,13 @@ def make_users_html(only_ids=None):
     user_ids = [row["Id"] for row in cursor]
     if only_ids:
         user_ids=only_ids
-    max_Id=max(user_ids)
-    for user_id in user_ids:
-        user_home=select_user_home(cursor, user_id)
-        print "User",user_home["Id"],"/",max_Id
+    max_user_id=max(user_ids)
+    len_user_ids=len(user_ids)
+    for (i,user_id) in enumerate(user_ids):
+        prev_user_id=user_ids[(i-1)%len_user_ids]
+        next_user_id=user_ids[(i+1)%len_user_ids]
+        user_home=select_user_home(cursor, user_id, prev_user_id, next_user_id)
+        print "User",user_home["Id"],"/",max_user_id
 
         with codecs.open(tempdir+"content/user"+str(user_home["Id"])+".html", "w", "utf-8") as f:
             f.write(render_user_home(user_home))

@@ -142,6 +142,7 @@ def rewrite_urls(cursor,html,stackexchange_domain):
                     aclass+=' internallink'
                 atag.set("class",aclass)
 
+    # FIXME: there seems to be a bug in lxml: when parsing with etree.XMLParser(recover=True), the etree.tostring(root) call below returns HTML which has erroneous closing tags of all different sorts (but apparently mostly </p>) inserted in the document.
     newhtml=etree.tostring(root)
     if newhtml=="<body/>":
         return ""

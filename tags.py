@@ -14,6 +14,13 @@ tag_template=pystache.parse(u"""<!DOCTYPE html>
     <link href="se.css" rel="stylesheet" type="text/css">
   </head>
   <body>
+<div class="linkheader">
+{{#NextPage}}<a class="internallink" href="tag{{Id}}.html">Next Tag</a>{{/NextPage}}
+{{#PrevPage}}<a class="internallink" href="tag{{Id}}.html">Prev Tag</a>{{/PrevPage}}
+<a class="internallink" href="index_tags.html">Tags Index</a>
+<a class="internallink" href="index_users.html">Users Index</a>
+<a class="internallink" href="index_questions.html">Questions Index</a>
+</div>
 <h1>Tag &lt;{{TagName}}&gt;</h1>
 {{#ExcerptPost}}
 
@@ -39,7 +46,7 @@ tag_template=pystache.parse(u"""<!DOCTYPE html>
 {{/comments}}
 
 {{/WikiPost}}
-<h2>Questions with tag &lt;{{TagName}}&gt;</h2>
+<h2>{{Count}} Questions with tag &lt;{{TagName}}&gt;</h2>
 {{#questions}}
 <p><a class="internallink" href="question{{Id}}.html">{{Title}}</a></p>
 {{/questions}}
@@ -47,9 +54,14 @@ tag_template=pystache.parse(u"""<!DOCTYPE html>
 </html>
 """)
 
-def render_tag(cursor,Id):
+def render_tag(cursor,Id,PrevId,NextId):
     cursor.execute('select * from Tags where Id=?', (Id,))
     tag=cursor.fetchone()
+
+    cursor.execute('select * from Tags where Id=?', (PrevId,))
+    tag["PrevPage"]=cursor.fetchone()
+    cursor.execute('select * from Tags where Id=?', (NextId,))
+    tag["NextPage"]=cursor.fetchone()
 
     excerpt_post_id=tag["ExcerptPostId"]
     if excerpt_post_id:
@@ -66,13 +78,16 @@ def render_tag(cursor,Id):
 
 def make_tags_html():
     cursor.execute('select Id from Tags')
-    Ids = [row["Id"] for row in cursor]
-    max_Id=max(Ids)
-    for Id in Ids:
-        print "Tag",Id,"/",max_Id
+    tag_ids = [row["Id"] for row in cursor]
+    max_tag_id=max(tag_ids)
+    len_tag_ids=len(tag_ids)
+    for (i,tag_id) in enumerate(tag_ids):
+        print "Tag",tag_id,"/",max_tag_id
 
-        with codecs.open(tempdir+"content/tag"+str(Id)+".html", "w", "utf-8") as f:
-            f.write(render_tag(cursor, Id))
+        with codecs.open(tempdir+"content/tag"+str(tag_id)+".html", "w", "utf-8") as f:
+            prev_tag_id=tag_ids[(i-1)%len_tag_ids]
+            next_tag_id=tag_ids[(i+1)%len_tag_ids]
+            f.write(render_tag(cursor, tag_id, next_tag_id, prev_tag_id))
 
 
 (connection,cursor)=init_db()

@@ -10,56 +10,76 @@ from pysqlite2 import dbapi2 as sqlite3
 import codecs
 import pickle
 
-sites_index_template=pystache.parse(u"""<html>
+templates={
+    'sites_index_template':\
+u"""<html>
   <head>
     <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
     <title>{{site_type}} Index</title>
     <link href="se.css" rel="stylesheet" type="text/css">
   </head>
     <body>
+<div class="linkheader">
+<a class="internallink" href="index_users.html">Users Index</a>
+<a class="internallink" href="index_questions.html">Questions Index</a>
+<a class="internallink" href="index_tags.html">Tags Index</a>
+</div>
 <h1>{{site_type}} Index</h1>
 <p>Number of {{site_type}}: {{sites_count}}</p>
+<div class="index">
 {{#sub_indices}}
-<p>
-<a href="{{sub_index_filename}}">&quot;{{#first}}{{Title}}{{/first}}&quot; to &quot;{{#last}}{{Title}}{{/last}}&quot;</a>
-</p>
+<a class="internallink" href="{{filename}}">&quot;{{#first}}{{Title}}{{/first}}&quot; to &quot;{{#last}}{{Title}}{{/last}}&quot;</a><br/>
 {{/sub_indices}}
+</div>
   </body>
-</html>""")
+</html>""",
 
-sites_sub_index_template=pystache.parse(u"""<html>
+    'sites_sub_index_template':\
+u"""<html>
   <head>
     <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
     <title>{{site_type}} Index &quot;{{#first}}{{Title}}{{/first}}&quot; to &quot;{{#last}}{{Title}}{{/last}}&quot;</title>
     <link href="se.css" rel="stylesheet" type="text/css">
   </head>
     <body>
+<div class="linkheader">
+{{#NextPage}}Next: <a class="internallink" href="{{filename}}">{{filename}}</a>{{/NextPage}}
+{{#PrevPage}}Prev: <a class="internallink" href="{{filename}}">{{filename}}</a>{{/PrevPage}}
+<a class="internallink" href="index_users.html">Users Index</a>
+<a class="internallink" href="index_questions.html">Questions Index</a>
+<a class="internallink" href="index_tags.html">Tags Index</a>
+</div>
 <h1>{{site_type}} Index &quot;{{#first}}{{Title}}{{/first}}&quot; to &quot;{{#last}}{{Title}}{{/last}}&quot;</h1>
-<p>
-<a href="{{index_filename}}">Back to {{site_type}} Index</a>
-</p>
-{{#sub_index}}
-<div class=\"floatleft\"><a href="{{Link}}">{{Title}}</a></div>
-{{/sub_index}}
+<div class="index">
+{{#sub_sites}}
+<a class="internallink" href="{{Link}}">{{Title}}</a>
+{{/sub_sites}}
+</div>
   </body>
-</html>""")
+</html>"""}
+
+renderer=pystache.Renderer(partials=templates,missing_tags="strict")
+
 
 def write_index_html(site_type, sites, file_path, file_mask, sub_index_size=1000):
     index_filename=file_mask % ("",)
     sub_indices=[]
-    for i in range(0,len(sites),sub_index_size):
-        sub_index=sites[i:i+sub_index_size]
-        sub_index_filename=file_mask % (str(i),)
-        d={"site_type":site_type,"first_index":i,"index_filename":index_filename,"sub_index_filename":sub_index_filename,"first":sub_index[0],"last":sub_index[-1],"sub_index":sub_index}
-        sub_indices.append(d)
+    starts=range(0,len(sites),sub_index_size)
+    for start in starts:
+        sub_sites=sites[start:start+sub_index_size]
+        sub_index_filename=file_mask % (str(start),)
+        sub_index={"site_type":site_type,"first_index":start,"index_filename":index_filename,"filename":sub_index_filename,"first":sub_sites[0],"last":sub_sites[-1],"sub_sites":sub_sites}
+        sub_indices.append(sub_index)
 
-        print sub_index_filename
-
-        with codecs.open(file_path+"/"+sub_index_filename, "w", "utf-8") as f:
-            f.write(pystache.render(sites_sub_index_template,d))
+    len_sub_indices=len(sub_indices)
+    for (i,sub_index) in enumerate(sub_indices):
+        sub_index["PrevPage"]=sub_indices[(i-1)%len_sub_indices]
+        sub_index["NextPage"]=sub_indices[(i+1)%len_sub_indices]
+        with codecs.open(file_path+"/"+sub_index["filename"], "w", "utf-8") as f:
+            f.write(renderer.render('{{>sites_sub_index_template}}',sub_index))
 
     with codecs.open(file_path+"/"+index_filename, "w", "utf-8") as f:
-        f.write(pystache.render(sites_index_template,{"site_type":site_type,"sites_count":len(sites),"sub_indices":sub_indices}))
+        f.write(renderer.render('{{>sites_index_template}}',{"site_type":site_type,"sites_count":len(sites),"sub_indices":sub_indices}))
     
 def write_users_index_html(cursor):
     cursor.execute('select Id,DisplayName as Title,"user"||Id||".html" as Link from Users order by DisplayName')
