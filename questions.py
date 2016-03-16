@@ -52,14 +52,15 @@ def select_question(cursor, Id):
 
     answers=select_answers_for_question(cursor,Id)
     question["answers"]=answers
-    
+
     return question
 
 
-def render_question(cursor, Id, renderer, prev_post_id, next_post_id):
+def render_question(cursor, Id, renderer, PrevId, NextId):
     question=select_question(cursor,Id)
-    question["PrevPage"]=select_question(cursor,prev_post_id)
-    question["NextPage"]=select_question(cursor,next_post_id)
+    # doing the next two queries in `select_question` would recurse forever.
+    question["PrevPage"]=select_question(cursor,PrevId)
+    question["NextPage"]=select_question(cursor,NextId)
     return renderer.render("{{>question_html}}",question)
 
 def make_questions_html(only_ids=None):

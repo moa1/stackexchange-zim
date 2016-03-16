@@ -88,6 +88,8 @@ def select_comments_for_post(cursor,PostId):
         comment["Text"]=rewriteurl.rewrite_urls(cursor,comment["Text"],stackexchange_domain)
         if comment["User"] and comment["CreationDate"]:
             comment["User"]["RenderDate"]=make_Date(comment["CreationDate"])
+        if comment["Score"]=="0":
+            comment["Score"]=None
     
     return comments
 

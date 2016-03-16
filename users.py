@@ -51,6 +51,7 @@ user_template=pystache.parse(u"""<!DOCTYPE html>
 <a class="internallink" href="index_users.html">Users Index</a>
 <a class="internallink" href="index_questions.html">Questions Index</a>
 <a class="internallink" href="index_tags.html">Tags Index</a>
+User Id: {{Id}}
 </div>
 <div class=\"userinfo\">
 <p>{{DisplayName}}</p>
