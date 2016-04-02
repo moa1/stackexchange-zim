@@ -1,19 +1,26 @@
 #!/usr/bin/python
 # -*- coding:utf-8 -*-
 
-# TODO: add Badges.xml to display the badges that a user has received.
-
 from utils import *
 import pystache
 import codecs
 import rewriteurl
 
-def select_user_home(cursor, Id, PrevUser, NextUser):
+def select_user_home(cursor, Id, PrevUserId, NextUserId):
     user=select_user(cursor, Id)
-    user["PrevPage"]=PrevUser
-    user["NextPage"]=NextUser
+    user["PrevPage"]={"Id":PrevUserId}
+    user["NextPage"]={"Id":NextUserId}
     if user["AboutMe"]:
         user["AboutMe"]=rewriteurl.rewrite_urls(cursor,user["AboutMe"],stackexchange_domain)
+    def get_badges(badgeclass):
+        cursor.execute('select * from Badges where UserId=? and Class=? order by Name,Date desc', (Id,badgeclass))
+        res=cursor.fetchall()
+        for badge in res:
+            badge["RenderDate"]=make_Date(badge["Date"])
+        return res
+    user["badgesclass1"]=get_badges("1")
+    user["badgesclass2"]=get_badges("2")
+    user["badgesclass3"]=get_badges("3")
 
     cursor.execute('select * from Posts where OwnerUserId=? and PostTypeId="1"', (Id,))
     user["questions"]=cursor.fetchall()
@@ -47,14 +54,14 @@ user_template=pystache.parse(u"""<!DOCTYPE html>
 {{#NextPage}}<a class="internallink" href="user{{Id}}.html">Next User</a>{{/NextPage}}
 {{#PrevPage}}<a class="internallink" href="user{{Id}}.html">Prev User</a>{{/PrevPage}}
 <a class="internallink" href="index_users.html">Users Index</a>
-<a class="internallink" href="index_questions.html">Questions Index</a>
-<a class="internallink" href="index_tags.html">Tags Index</a>
+<a class="internallink" href="../index.html">Home</a>
 User Id: {{Id}}
 </div>
 <div class=\"userinfo\">
 <p>{{DisplayName}}</p>
 <p>Creation: {{CreationDate}}</p>
 <p>Reputation: {{Reputation}}</p>
+<p>Badges: <a class="internallink" href="#class1badges"><span class="class1">{{#NumBadges}}{{Class1}}{{/NumBadges}}</span></a><a class="internallink" href="#class2badges"><span class="class2">{{#NumBadges}}{{Class2}}{{/NumBadges}}</span></a><a class="internallink" href="#class3badges"><span class="class3">{{#NumBadges}}{{Class3}}{{/NumBadges}}</span></a></p>
 <p>Homepage: {{#WebsiteUrl}}<a href="{{WebsiteUrl}}">{{WebsiteUrl}}</a>{{/WebsiteUrl}}</p>
 <p>Location: {{#Location}}{{Location}}{{/Location}}</p>
 <p>Age: {{#Age}}{{Age}}{{/Age}}</p>
@@ -66,6 +73,18 @@ User Id: {{Id}}
 <div class=\"aboutme post\">
 {{#AboutMe}}{{{AboutMe}}}{{/AboutMe}}
 </div>
+<h2>My {{#NumBadges}}{{Class1}}{{/NumBadges}} gold badges<a class="internallink" name="class1badges" href="#class1badges"><span style="float:right;">¶</span></a></h2>
+{{#badgesclass1}}
+<p><a class="internallink" href="badge{{Name}}.html"><span class="class1">{{Name}}</span></a> awarded on <span class="date">{{#RenderDate}}{{Date}} {{Time}}{{/RenderDate}}</span></p>
+{{/badgesclass1}}
+<h2>My {{#NumBadges}}{{Class2}}{{/NumBadges}} silver badges<a class="internallink" name="class2badges" href="#class2badges"><span style="float:right;">¶</span></a></h2>
+{{#badgesclass2}}
+<p><a class="internallink" href="badge{{Name}}.html"><span class="class2">{{Name}}</span></a> awarded on <span class="date">{{#RenderDate}}{{Date}} {{Time}}{{/RenderDate}}</span></p>
+{{/badgesclass2}}
+<h2>My {{#NumBadges}}{{Class3}}{{/NumBadges}} bronze badges<a class="internallink" name="class3badges" href="#class3badges"><span style="float:right;">¶</span></a></h2>
+{{#badgesclass3}}
+<p><a class="internallink" href="badge{{Name}}.html"><span class="class3">{{Name}}</span></a> awarded on <span class="date">{{#RenderDate}}{{Date}} {{Time}}{{/RenderDate}}</span></p>
+{{/badgesclass3}}
 <h2>My {{questions_count}} questions<a class="internallink" name="questions" href="#questions"><span style="float:right;">¶</span></a></h2>
 {{#questions}}
 <p><a class="internallink" href="question{{Id}}.html">{{Title}}</a></p>
@@ -98,12 +117,12 @@ def make_users_html(only_ids=None):
         user_home=select_user_home(cursor, user_id, prev_user_id, next_user_id)
         print "User",user_home["Id"],"/",max_user_id
 
-        with codecs.open(tempdir+"content/user"+str(user_home["Id"])+".html", "w", "utf-8") as f:
+        with codecs.open(file_path+"user"+str(user_home["Id"])+".html", "w", "utf-8") as f:
             f.write(render_user_home(user_home))
 
 (connection,cursor)=init_db()
 
 with connection:
     #import profile
-    #profile.run("make_users_html()")
+    #profile.run("make_users_html()",sort="tottime")
     make_users_html()

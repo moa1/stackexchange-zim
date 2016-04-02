@@ -5,10 +5,10 @@ import pystache
 
 templates={
     "date":\
-u"""<span class=\"date\">{{Date}}<br/>{{Time}}</span>""",
+u"""<span class=\"date\">{{Date}}</span><span class=\"time\">{{Time}}</span>""",
     
     "userplate":\
-    u"""{{#Id}}<span class=\"user\"><a class="internallink" href="user{{Id}}.html">{{#RenderDate}}{{>date}}{{/RenderDate}}{{DisplayName}}</a><br/>{{#ReputationHumanReadable}}<span class="reputation">{{ReputationHumanReadable}}</span>{{/ReputationHumanReadable}}</span>{{/Id}}""",
+    u"""{{#Id}}<span class=\"user\"><a class="internallink" href="user{{Id}}.html">{{#RenderDate}}{{>date}}{{/RenderDate}}{{DisplayName}}</a><br/>{{#ReputationHumanReadable}}<span class="reputation">{{ReputationHumanReadable}}</span>{{/ReputationHumanReadable}}<span class="class1">{{#NumBadges}}{{Class1}}{{/NumBadges}}</span><span class="class2">{{#NumBadges}}{{Class2}}{{/NumBadges}}</span><span class="class3">{{#NumBadges}}{{Class3}}{{/NumBadges}}</span></span>{{/Id}}""",
     
     "comment":\
 u"""<div class=\"comment post\">
@@ -69,9 +69,8 @@ u"""<!DOCTYPE html>
 <div class="linkheader">
 {{#NextPage}}<a class="internallink" href="question{{Id}}.html">Next Question</a>{{/NextPage}}
 {{#PrevPage}}<a class="internallink" href="question{{Id}}.html">Prev Question</a>{{/PrevPage}}
-<a class="internallink" href="index_tags.html">Tags Index</a>
-<a class="internallink" href="index_users.html">Users Index</a>
 <a class="internallink" href="index_questions.html">Questions Index</a>
+<a class="internallink" href="../index.html">Home</a>
 Question Id: {{Id}}
 </div>
     {{>question}}
@@ -101,8 +100,7 @@ u"""<!DOCTYPE html>
 {{#NextPage}}<a class="internallink" href="tag{{Id}}.html">Next Tag</a>{{/NextPage}}
 {{#PrevPage}}<a class="internallink" href="tag{{Id}}.html">Prev Tag</a>{{/PrevPage}}
 <a class="internallink" href="index_tags.html">Tags Index</a>
-<a class="internallink" href="index_users.html">Users Index</a>
-<a class="internallink" href="index_questions.html">Questions Index</a>
+<a class="internallink" href="../index.html">Home</a>
 Tag Id: {{Id}}
 </div>
 <h1>Tag {{>tag}}</h1>

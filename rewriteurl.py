@@ -168,4 +168,4 @@ if __name__=="__main__":
             html=row["Body"]
             Id=row["Id"]
             ParentId=row["ParentId"]
-            print Id,rewrite_urls(cursor,html,"blender.stackexchange.com")
+            print Id,rewrite_urls(cursor,html,stackexchange_domain)

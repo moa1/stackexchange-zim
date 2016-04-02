@@ -1,3 +1,9 @@
+.badgeinfo {
+    float: right;
+    background-color: #aaf;
+    line-height: 1ex;
+    padding: 0.5ex;
+}
 .userinfo {
     float: right;
     background-color: #aaf;
@@ -6,7 +12,7 @@
 }
 .aboutme.post {
     padding: 1ex;
-    background-color: #ccc;
+    background-color: #ccf;
 }
 .tag {
     padding: 3px;
@@ -53,11 +59,6 @@
 .date {
     color: #bbb;
 }
-.postdate {
-    float: right;
-    padding: 6px;
-    color: #bbb;
-}
 .user {
     float: right;
     padding: 4px;
@@ -68,7 +69,34 @@
 .reputation {
     color: #000;
 }
+.class1:before {
+    content: "•";
+    color: #ffe500;
+}
+.class1 {
+    margin-left: 0.5ex;
+}
+.class2:before {
+    content: "•";
+    color: #bcb89a;
+}
+.class2 {
+    margin-left: 0.5ex;
+}
+.class3:before {
+    content: "•";
+    color: #b96f00;
+}
+.class3 {
+    margin-left: 0.5ex;
+}
 .user .date {
+    margin-left: 0.5ex;
+    float: right;
+    color: #000;
+    font-size-adjust:0.5;
+}
+.user .time {
     margin-left: 0.5ex;
     float: right;
     color: #000;

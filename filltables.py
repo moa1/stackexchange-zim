@@ -1,6 +1,7 @@
 #!/usr/bin/python
 # -*- coding: utf-8 -*-"
 
+import os
 import lxml
 from pysqlite2 import dbapi2 as sqlite3
 from utils import *
@@ -17,9 +18,12 @@ def fill_table(file, table, attributes,connection):
     statement="insert into %s(%s) values (%s)" % \
         (table, ",".join(attributes), ",".join(":"+a for a in attributes))
     print statement
-    
+
+    total_size=os.fstat(file.fileno()).st_size
     while True:
         buf=file.read(100000)
+        buf_pos=file.tell()
+        print "%s.xml %i / %i (%f%%)" % (table,buf_pos,total_size,100.0*buf_pos/total_size)
         if buf=="":
             break
         parser.feed(buf)
@@ -33,23 +37,23 @@ def fill_table(file, table, attributes,connection):
                 row["Id"]=int(row["Id"])
                 #print row
                 connection.execute(statement, row)
-                print "Insert",table,row["Id"]
+                #print "Insert",table,row["Id"]
                 elem.clear()
 
     root = parser.close()
     #print etree.tostring(root)
 
-f=open(tempdir+"table_attributes.pickle","r")
+f=open(tempdir+"/table_attributes.pickle","r")
 table_attributes=pickle.load(f)
 f.close()
 
 connection = sqlite3.connect(dbfile)
 
 #tables=["Badges","PostHistory","Posts","Users","Comments","PostLinks","Tags","Votes"]
-tables=["Users","Posts","Comments","Tags"]
+tables=["Badges","Users","Posts","Comments","Tags"]
 
 for table in tables:
     #codec "utf-8-sig" removes the BOM if present, which is required for lxml
-    with codecs.open(stackexchange_dump_path+table+".xml", "r", "utf-8-sig") as f:
+    with codecs.open(stackexchange_dump_dir+"/"+table+".xml", "r", "utf-8-sig") as f:
         with connection:
             fill_table(f,table,table_attributes[table],connection)

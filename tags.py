@@ -43,7 +43,7 @@ def make_tags_html():
     for (i,tag_id) in enumerate(tag_ids):
         print "Tag",tag_id,"/",max_tag_id
 
-        with codecs.open(tempdir+"content/tag"+str(tag_id)+".html", "w", "utf-8") as f:
+        with codecs.open(file_path+"tag"+str(tag_id)+".html", "w", "utf-8") as f:
             prev_tag_id=tag_ids[(i-1)%len_tag_ids]
             next_tag_id=tag_ids[(i+1)%len_tag_ids]
             f.write(render_tag(cursor, tag_id, renderer, prev_tag_id, next_tag_id))
@@ -53,4 +53,6 @@ def make_tags_html():
 
 with connection:
     print "Tags"
+    #import profile
+    #profile.run("make_tags_html()",sort="tottime")
     make_tags_html()

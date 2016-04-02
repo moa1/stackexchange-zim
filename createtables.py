@@ -8,15 +8,18 @@ from pysqlite2 import dbapi2 as sqlite3
 from utils import *
 import pickle
 
-def get_all_attributes(file):
+def get_all_attributes(file,table):
     "Return the list of all attribute names the (XML) file has as row elements."
     parser = lxml.etree.XMLPullParser(events=('start', 'end'),tag="row")
     events = parser.read_events()
 
     all_keys = {}
 
+    total_size=os.fstat(file.fileno()).st_size
     while True:
         buf=file.read(100000)
+        buf_pos=file.tell()
+        print "%s.xml %i / %i (%f%%)" % (table,buf_pos,total_size,100.0*buf_pos/total_size)
         if buf=="":
             break
         parser.feed(buf)
@@ -41,16 +44,16 @@ def create_table(cursor, table_name, attributes):
     cursor.execute(statement)
 
 #tables=["Badges","PostHistory","Posts","Users","Comments","PostLinks","Tags","Votes"]
-tables=["Users","Posts","Comments","Tags"]
+tables=["Badges","Users","Posts","Comments","Tags"]
 
 table_attributes={}
 for table in tables:
     print table
-    with open(stackexchange_dump_path+"/"+table+".xml","r") as f:
-        attributes=get_all_attributes(f)
+    with open(stackexchange_dump_dir+"/"+table+".xml","r") as f:
+        attributes=get_all_attributes(f,table)
         table_attributes[table]=attributes
 
-with open(tempdir+"table_attributes.pickle","w") as f:
+with open(tempdir+"/table_attributes.pickle","w") as f:
     pickle.dump(table_attributes,f)
 
 try:
@@ -69,5 +72,7 @@ cursor.execute("create table PostsTags(PostId integer, TagId integer, primary ke
 cursor.execute("create index Posts_OwnerUserId on Posts(OwnerUserId)")
 cursor.execute("create index Posts_ParentId on Posts(ParentId)")
 cursor.execute("create index Comments_PostId on Comments(PostId)")
+cursor.execute("create index Badges_UserId on Badges(UserId)")
+cursor.execute("create index Badges_Name on Badges(Name)")
     
 conn.close()

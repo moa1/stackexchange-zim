@@ -1,0 +1,82 @@
+#!/usr/bin/python
+# -*- coding:utf-8 -*-
+
+from utils import *
+import pystache
+import codecs
+import rewriteurl
+
+def select_badge_home(cursor, Name, PrevName, NextName):
+    cursor.execute('select Name,Class,TagBased from Badges where Name=? limit 1', (Name,))
+    badge=cursor.fetchone()
+    badge["ClassMetal"]={"1":"gold","2":"silver","3":"bronze"}[badge["Class"]]
+
+    if badge["TagBased"]=="True":
+        cursor.execute('select (select Id from Tags where TagName=Badges.Name) as Id, Name from Badges where Name=? limit 1', (Name,))
+        badge["Tag"]=cursor.fetchone()
+        
+    badge["PrevPage"]={"Name":PrevName}
+    badge["NextPage"]={"Name":NextName}
+
+    cursor.execute('select UserId,(select DisplayName from Users where Id=Badges.UserId) as UserName,Date from Badges where Name=? order by Date desc', (Name,))
+    badge["Awarded"]=cursor.fetchall()
+    for awarded in badge["Awarded"]:
+        awarded["RenderDate"]=make_Date(awarded["Date"])
+    badge["Awarded_count"]=len(badge["Awarded"])
+
+    return badge
+
+badge_template=pystache.parse(u"""<!DOCTYPE html>
+<html>
+  <head>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    <title>Badge {{Name}}</title>
+    <link href="se.css" rel="stylesheet" type="text/css">
+  </head>
+    <body>
+<div class="linkheader">
+{{#NextPage}}<a class="internallink" href="badge{{Name}}.html">Next Badge</a>{{/NextPage}}
+{{#PrevPage}}<a class="internallink" href="badge{{Name}}.html">Prev Badge</a>{{/PrevPage}}
+<a class="internallink" href="index_badges.html">Badges Index</a>
+<a class="internallink" href="../index.html">Home</a>
+Badge Name: {{Name}}
+</div>
+<div class=\"badgeinfo\">
+<p>Badge {{Name}}</p>
+<p>Class: <span class="class{{Class}}">{{ClassMetal}}</span></p>
+{{#Tag}}Based on tag <a class="internallink" href="tag{{Id}}.html">{{Name}}</a>{{/Tag}}
+<p><a class="internallink" href="#awarded">Awarded {{Awarded_count}} times</a></p>
+</div>
+<h1>{{Name}}</h1>
+<h2>Awards<a class="internallink" name="awarded" href="#awarded"><span style="float:right;">¶</span></a></h2>
+{{#Awarded}}
+<p>Awarded to <a class="internallink" href="user{{UserId}}.html">{{UserName}}</a> on <span class="date">{{#RenderDate}}{{Date}} {{Time}}{{/RenderDate}}</span></p>
+{{/Awarded}}
+  </body>
+</html>""")
+
+def render_badge_home(badge):
+    html=pystache.render(badge_template,badge)
+    return html
+
+def make_badges_html(only_names=None):
+    cursor.execute('select distinct Name from Badges order by Name')
+    badge_names = [row["Name"] for row in cursor]
+    if only_names:
+        badge_names=only_names
+    len_badge_names=len(badge_names)
+    for (i,badge_name) in enumerate(badge_names):
+        prev_badge_name=badge_names[(i-1)%len_badge_names]
+        next_badge_name=badge_names[(i+1)%len_badge_names]
+        badge_home=select_badge_home(cursor, badge_name, prev_badge_name, next_badge_name)
+        print "Badge",i,"/",len_badge_names
+
+        with codecs.open(file_path+"badge"+badge_name+".html", "w", "utf-8") as f:
+            f.write(render_badge_home(badge_home))
+
+(connection,cursor)=init_db()
+
+with connection:
+    #import profile
+    #profile.run("make_badges_html()",sort="tottime")
+    make_badges_html()

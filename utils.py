@@ -4,11 +4,11 @@
 from pysqlite2 import dbapi2 as sqlite3
 import rewriteurl
 import math
+from config import *
 
-stackexchange_dump_path="/home/itoni/Downloads/stackexchange-to-zim-converter/blender.stackexchange.com/"
-tempdir="temp/"
-dbfile=tempdir+"stackexchange-dump.sqlite3"
-stackexchange_domain="blender.stackexchange.com"
+dbfile=tempdir+"/stackexchange-dump.sqlite3"
+file_path=tempdir+"/content/"+stackexchange_domain+"/"
+
 
 def dict_factory(cursor, row):
     d = {}
@@ -52,14 +52,19 @@ def format_number_human_readable(number):
 def make_Date(date):
     "Format a stackexchange-date human-readably."
     l=date.split(".")[0].split("T")
-    d=l[0]
-    t=l[1]
-    return {'Date':d,'Time':t}
+    d=l[0].split("-")
+    months_en=["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"]
+    d_readable=d[2]+" "+months_en[int(d[1])-1]+" "+d[0]
+    t=l[1].split(":")
+    t_readable=t[0]+":"+t[1]
+    return {'Date':d_readable,'Time':t_readable}
 
 def select_user(cursor, Id):
     cursor.execute('select * from Users where Id=?', (Id,))
     user=cursor.fetchone()
     if user:
+        cursor.execute('select (select count(*) from Badges where UserId=? and Class="1") as Class1,(select count(*) from Badges where UserId=? and Class="2") as Class2, (select count(*) from Badges where UserId=? and Class="3") as Class3', (Id,Id,Id))
+        user["NumBadges"]=cursor.fetchone()
         if user["Reputation"]:
             user["ReputationHumanReadable"]=format_number_human_readable(int(user["Reputation"]))
         user["RenderDate"]=None
