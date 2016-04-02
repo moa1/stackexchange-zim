@@ -2,7 +2,14 @@
 # -*- coding:utf-8 -*-
 
 from pysqlite2 import dbapi2 as sqlite3
-from lxml import etree
+import lxml.etree
+# If you don't have python-bs4 installed, you can use python-lxml instead (which you need for parsing the stackexchange dump anyways). It will be faster, but will produce some erroneous tags (which browsers ignore anyways).
+try:
+    import bs4
+    bs4_available=True
+    import lxml.html.soupparser
+except:
+    bs4_available=False
 
 def internal_url_for_question(cursor,question_id):
     cursor.execute('select Id,PostTypeId from Posts where Id=? and PostTypeId="1"',(question_id,))
@@ -120,9 +127,30 @@ def internal_url_for_stackexchange_url(cursor,url,stackexchange_domain):
 
 def rewrite_urls(cursor,html,stackexchange_domain):
     "Given the HTML fragment `html`, replace stackexchange urls that point to `stackexchange_domain` by the corresponding internal urls if they exist in the database accessible using `cursor`."
-    parser=etree.XMLParser(recover=True)
-    # encapsulate the html in <body> tags so that the parser doesn't just parse the first tag
-    root=etree.fromstring("<body>"+html+"</body>",parser)
+    # encapsulate the html in <html><body> tags so that the parser doesn't just parse the first tag
+    html="<html><body>"+html+"</body></html>"
+
+    def parse_html_using_lxml(html):
+        # FIXME: there seems to be a bug in lxml: when parsing with etree.XMLParser(recover=True), the etree.tostring(root) call below returns HTML which has erroneous closing tags of all different sorts (but apparently mostly </p>) inserted in the document.
+        parser=lxml.etree.XMLParser(recover=True)
+        root=lxml.etree.fromstring(html,parser)
+        return root
+
+    def parse_html_using_lxml_and_bs4(html):
+        "try parsing using the fast lxml parser, and on error, fall back to the bs4 parser (which seems to be faster for the stackexchange dumps)"
+        try:
+            parser=lxml.etree.XMLParser()
+            root=lxml.etree.fromstring(html,parser)
+        except lxml.etree.XMLSyntaxError:
+            #parser=lambda html,**bsargs: bs4.BeautifulSoup(html,"html.parser",**bsargs)
+            parser=lambda html,**bsargs: bs4.BeautifulSoup(html,"lxml",**bsargs)
+            root=lxml.html.soupparser.fromstring(html,parser)
+        return root
+
+    if bs4_available:
+        root=parse_html_using_lxml_and_bs4(html)
+    else:
+        root=parse_html_using_lxml(html)
 
     aiter=root.iter("a")
     for atag in aiter:
@@ -142,12 +170,15 @@ def rewrite_urls(cursor,html,stackexchange_domain):
                     aclass+=' internallink'
                 atag.set("class",aclass)
 
-    # FIXME: there seems to be a bug in lxml: when parsing with etree.XMLParser(recover=True), the etree.tostring(root) call below returns HTML which has erroneous closing tags of all different sorts (but apparently mostly </p>) inserted in the document.
-    newhtml=etree.tostring(root)
-    if newhtml=="<body/>":
+    #newhtml=etree.tostring(root)
+    #newhtml=lxml.html.tostring(root)
+    newhtml=lxml.etree.tostring(root)
+    #soup = BeautifulSoup(newhtml, 'html.parser')
+    #newhtml=soup.prettify()
+    if newhtml=="<html><body/></html>":
         return ""
-    assert newhtml.startswith("<body>") and newhtml.endswith("</body>")
-    newhtml=newhtml[6:-7]
+    assert newhtml.startswith("<html><body>") and newhtml.endswith("</body></html>")
+    newhtml=newhtml[12:-14]
     return newhtml
 
 if __name__=="__main__":
