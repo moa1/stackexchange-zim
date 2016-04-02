@@ -3,13 +3,6 @@
 
 from pysqlite2 import dbapi2 as sqlite3
 import lxml.etree
-# If you don't have python-bs4 installed, you can use python-lxml instead (which you need for parsing the stackexchange dump anyways). It will be faster, but will produce some erroneous tags (which browsers ignore anyways).
-try:
-    import bs4
-    bs4_available=True
-    import lxml.html.soupparser
-except:
-    bs4_available=False
 
 def internal_url_for_question(cursor,question_id):
     cursor.execute('select Id,PostTypeId from Posts where Id=? and PostTypeId="1"',(question_id,))
@@ -130,27 +123,8 @@ def rewrite_urls(cursor,html,stackexchange_domain):
     # encapsulate the html in <html><body> tags so that the parser doesn't just parse the first tag
     html="<html><body>"+html+"</body></html>"
 
-    def parse_html_using_lxml(html):
-        # FIXME: there seems to be a bug in lxml: when parsing with etree.XMLParser(recover=True), the etree.tostring(root) call below returns HTML which has erroneous closing tags of all different sorts (but apparently mostly </p>) inserted in the document.
-        parser=lxml.etree.XMLParser(recover=True)
-        root=lxml.etree.fromstring(html,parser)
-        return root
-
-    def parse_html_using_lxml_and_bs4(html):
-        "try parsing using the fast lxml parser, and on error, fall back to the bs4 parser (which seems to be faster for the stackexchange dumps)"
-        try:
-            parser=lxml.etree.XMLParser()
-            root=lxml.etree.fromstring(html,parser)
-        except lxml.etree.XMLSyntaxError:
-            #parser=lambda html,**bsargs: bs4.BeautifulSoup(html,"html.parser",**bsargs)
-            parser=lambda html,**bsargs: bs4.BeautifulSoup(html,"lxml",**bsargs)
-            root=lxml.html.soupparser.fromstring(html,parser)
-        return root
-
-    if bs4_available:
-        root=parse_html_using_lxml_and_bs4(html)
-    else:
-        root=parse_html_using_lxml(html)
+    parser=lxml.etree.HTMLParser(recover=True)
+    root=lxml.etree.fromstring(html,parser)
 
     aiter=root.iter("a")
     for atag in aiter:
