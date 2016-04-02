@@ -1,7 +1,6 @@
 #!/usr/bin/python
 # -*- coding:utf-8 -*-
 
-from pysqlite2 import dbapi2 as sqlite3
 import lxml.etree
 
 def internal_url_for_question(cursor,question_id):

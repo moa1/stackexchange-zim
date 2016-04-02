@@ -2,12 +2,7 @@
 
 # list all present attributes in a stackoverflow dump xml file.
 
-import sys
-import os
-from lxml import etree
-from pysqlite2 import dbapi2 as sqlite3
 from utils import *
-import pickle
 
 def parse_tags(Tags):
     # Given Tags in the form "<tag 1><tag 2>...", return the list of tags.

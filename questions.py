@@ -3,10 +3,7 @@
 # TODO: make that external image alternative texts are shown in a different color, maybe with a link to the external image.
 
 from utils import *
-import pystache
-from pysqlite2 import dbapi2 as sqlite3
 import codecs
-import rewriteurl
 import templates
 
 #PostTypeId="1" means question

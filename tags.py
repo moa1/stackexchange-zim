@@ -2,10 +2,7 @@
 # -*- coding:utf-8 -*-
 
 from utils import *
-import pystache
-from pysqlite2 import dbapi2 as sqlite3
 import codecs
-import pickle
 import templates
 
 def select_tag(cursor,Id):

@@ -1,16 +1,14 @@
 #!/usr/bin/python
 # -*- coding: utf-8 -*-"
 
-from lxml import etree
+import lxml
 from pysqlite2 import dbapi2 as sqlite3
 from utils import *
 import codecs
 import pickle
 
-import sys #debug
-
 def fill_table(file, table, attributes,connection):
-    parser = etree.XMLPullParser(events=('start', 'end'),tag="row")
+    parser = lxml.etree.XMLPullParser(events=('start', 'end'),tag="row")
     events = parser.read_events()
 
     attributes=[a for a in attributes if a!="Id"]

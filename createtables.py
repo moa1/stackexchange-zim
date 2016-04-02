@@ -2,16 +2,15 @@
 
 # list all present attributes in a stackoverflow dump xml file.
 
-import sys
 import os
-from lxml import etree
+import lxml
 from pysqlite2 import dbapi2 as sqlite3
 from utils import *
 import pickle
 
 def get_all_attributes(file):
     "Return the list of all attribute names the (XML) file has as row elements."
-    parser = etree.XMLPullParser(events=('start', 'end'),tag="row")
+    parser = lxml.etree.XMLPullParser(events=('start', 'end'),tag="row")
     events = parser.read_events()
 
     all_keys = {}

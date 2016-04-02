@@ -2,7 +2,6 @@
 # Miscellaneous functions
 
 from pysqlite2 import dbapi2 as sqlite3
-import pystache
 import rewriteurl
 import math
 
@@ -10,20 +9,6 @@ stackexchange_dump_path="/home/itoni/Downloads/stackexchange-to-zim-converter/bl
 tempdir="temp/"
 dbfile=tempdir+"stackexchange-dump.sqlite3"
 stackexchange_domain="blender.stackexchange.com"
-
-# TODO: FIXME: I think there is a bug in pystache. A template "{{& name}}" should unescape html according to "mustache(5) - Logic-less templates..html", but pystache does not do this. When this bug is reported/fixed, I should remove function unescape_html below and replace calls to it by correct pystache usage.
-
-def unescape_html(string, quote=None):
-    """The opposite of cgi.escape():
-Replace special characters "&", "<" and ">" to HTML-safe sequences.
-If the optional flag quote is true, the quotation mark character (")
-is also translated."""
-    string = string.replace("&amp;","&")
-    string = string.replace("&lt;","<")
-    string = string.replace("&gt;",">")
-    if quote:
-        string = string.replace("&quot;","\"")
-    return string
 
 def dict_factory(cursor, row):
     d = {}
