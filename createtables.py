@@ -42,41 +42,37 @@ def create_table(cursor, table_name, attributes):
     print statement
     cursor.execute(statement)
 
-#tables=["Badges","PostHistory","Posts","Users","Comments","PostLinks","Tags","Votes"]
-tables=["Badges","Users","Posts","Comments","Tags"]
+if __name__=="__main__":
+    #tables=["Badges","PostHistory","Posts","Users","Comments","PostLinks","Tags","Votes"]
+    tables=["Badges","Users","Posts","Comments","Tags"]
 
-table_attributes={}
-for table in tables:
-    print table
-    with open(stackexchange_dump_dir+"/"+table+".xml","r") as f:
-        attributes=get_all_attributes(f,table)
-        table_attributes[table]=attributes
+    table_attributes={}
+    for table in tables:
+        print table
+        with open(stackexchange_dump_dir+"/"+table+".xml","r") as f:
+            attributes=get_all_attributes(f,table)
+            table_attributes[table]=attributes
 
-try:
-    os.unlink(dbfile)
-except:
-    pass
-conn = sqlite3.connect(dbfile)
-cursor = conn.cursor()
+    try:
+        os.unlink(dbfile)
+    except:
+        pass
+    connection = sqlite3.connect(dbfile)
+    cursor = connection.cursor()
 
-# write attributes into table Attributes
-cursor.execute("create table Attributes(Id integer primary key,TableName text,AttributeName text)")
-for table in table_attributes.keys():
-    for attribute in table_attributes[table]:
-        print table,attribute
-        cursor.execute("insert into Attributes(TableName,AttributeName) values(?,?)",(table,attribute,))
+    insert_table_attributes(cursor,table_attributes)
 
-# create each table with its attributes
-for table in tables:
-    attributes=table_attributes[table]
-    create_table(cursor,table,attributes)
+    # create each table with its attributes
+    for table in tables:
+        attributes=table_attributes[table]
+        create_table(cursor,table,attributes)
 
-cursor.execute("create table PostsTags(PostId integer, TagId integer, primary key (PostId, TagId))")
+    cursor.execute("create table PostsTags(PostId integer, TagId integer, primary key (PostId, TagId))")
 
-cursor.execute("create index Posts_OwnerUserId on Posts(OwnerUserId)")
-cursor.execute("create index Posts_ParentId on Posts(ParentId)")
-cursor.execute("create index Comments_PostId on Comments(PostId)")
-cursor.execute("create index Badges_UserId on Badges(UserId)")
-cursor.execute("create index Badges_Name on Badges(Name)")
+    cursor.execute("create index Posts_OwnerUserId on Posts(OwnerUserId)")
+    cursor.execute("create index Posts_ParentId on Posts(ParentId)")
+    cursor.execute("create index Comments_PostId on Comments(PostId)")
+    cursor.execute("create index Badges_UserId on Badges(UserId)")
+    cursor.execute("create index Badges_Name on Badges(Name)")
     
-conn.close()
+    connection.close()
