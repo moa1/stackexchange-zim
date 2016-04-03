@@ -6,7 +6,6 @@ import lxml
 from pysqlite2 import dbapi2 as sqlite3
 from utils import *
 import codecs
-import pickle
 
 def fill_table(file, table, attributes,connection):
     parser = lxml.etree.XMLPullParser(events=('start', 'end'),tag="row")
@@ -43,11 +42,9 @@ def fill_table(file, table, attributes,connection):
     root = parser.close()
     #print etree.tostring(root)
 
-f=open(tempdir+"/table_attributes.pickle","r")
-table_attributes=pickle.load(f)
-f.close()
-
 connection = sqlite3.connect(dbfile)
+
+table_attributes=get_table_attributes(connection)
 
 #tables=["Badges","PostHistory","Posts","Users","Comments","PostLinks","Tags","Votes"]
 tables=["Badges","Users","Posts","Comments","Tags"]

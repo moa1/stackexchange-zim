@@ -6,7 +6,6 @@ import os
 import lxml
 from pysqlite2 import dbapi2 as sqlite3
 from utils import *
-import pickle
 
 def get_all_attributes(file,table):
     "Return the list of all attribute names the (XML) file has as row elements."
@@ -53,9 +52,6 @@ for table in tables:
         attributes=get_all_attributes(f,table)
         table_attributes[table]=attributes
 
-with open(tempdir+"/table_attributes.pickle","w") as f:
-    pickle.dump(table_attributes,f)
-
 try:
     os.unlink(dbfile)
 except:
@@ -63,6 +59,14 @@ except:
 conn = sqlite3.connect(dbfile)
 cursor = conn.cursor()
 
+# write attributes into table Attributes
+cursor.execute("create table Attributes(Id integer primary key,TableName text,AttributeName text)")
+for table in table_attributes.keys():
+    for attribute in table_attributes[table]:
+        print table,attribute
+        cursor.execute("insert into Attributes(TableName,AttributeName) values(?,?)",(table,attribute,))
+
+# create each table with its attributes
 for table in tables:
     attributes=table_attributes[table]
     create_table(cursor,table,attributes)

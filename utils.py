@@ -6,7 +6,7 @@ import rewriteurl
 import math
 from config import *
 
-dbfile=tempdir+"/stackexchange-dump.sqlite3"
+dbfile=tempdir+"/"+stackexchange_domain+".sqlite3"
 file_path=tempdir+"/content/"+stackexchange_domain+"/"
 
 
@@ -22,6 +22,18 @@ def init_db():
     #connection.row_factory = sqlite3.Row
     cursor = connection.cursor()
     return (connection,cursor)
+
+def get_table_attributes(connection):
+    "get table attributes read by createtables.py"
+    table_attributes={}
+    cursor=connection.cursor()
+    cursor.execute("select TableName,AttributeName from Attributes")
+    for row in cursor.fetchall():
+        table=row[0]
+        if table not in table_attributes:
+            table_attributes[table]=[]
+        table_attributes[table].append(row[1])
+    return table_attributes
 
 def format_number_human_readable(number):
     "Returns a human-readable string representation of a number."
