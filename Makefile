@@ -25,11 +25,11 @@ temp/finished-content: temp/finished-database
 	mkdir "temp/content/$(stackexchange_domain)"
 	ln -f -s ../../../favicon.png temp/content/$(stackexchange_domain)/
 	ln -f -s ../../../se.css temp/content/$(stackexchange_domain)/
-	python badges.py
-	python users.py
-	python questions.py
-	python tags.py
 	python indices.py
+	python tags.py
+	python questions.py
+	python users.py
+	python badges.py
 	touch temp/finished-content
 
 temp/content/index.html: temp/finished-content
