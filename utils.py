@@ -94,7 +94,7 @@ def select_comments_for_post(cursor,PostId):
     comments=cursor.fetchall()
     for comment in comments:
         comment["User"]=select_user(cursor,comment["UserId"])
-        comment["Text"]=rewriteurl.rewrite_urls(cursor,comment["Text"],stackexchange_domain)
+        comment["Text"]=rewriteurl.rewrite_urls_in_text(cursor,comment["Text"],stackexchange_domain)
         if comment["User"] and comment["CreationDate"]:
             comment["User"]["RenderDate"]=make_Date(comment["CreationDate"])
         if comment["Score"]=="0":
@@ -106,7 +106,7 @@ def select_post(cursor,Id):
     cursor.execute('select * from Posts where Id=?', (Id,))
     post=cursor.fetchone()
     
-    post["Body"]=rewriteurl.rewrite_urls(cursor,post["Body"],stackexchange_domain)
+    post["Body"]=rewriteurl.rewrite_urls_in_html(cursor,post["Body"],stackexchange_domain)
     post["OwnerUser"]=select_user(cursor,post["OwnerUserId"])
     if post["OwnerUser"] and post["CreationDate"]:
         post["OwnerUser"]["RenderDate"]=make_Date(post["CreationDate"])

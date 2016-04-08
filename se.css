@@ -141,6 +141,9 @@ a {/*all external links are in italic font*/
     border: 1px solid black;
     font-style: normal;
 }
+.comment .internallink {
+    color: #888;
+}
 .answerlink {
     float: right;
 }
@@ -148,13 +151,20 @@ a {/*all external links are in italic font*/
     background: #ccc;
     padding: 2px;
 }
+blockquote {
+    background: #cdc;
+}
 code {
     padding: 2px;
     background: #ccc;
+    display: inline-block;
 }
 kbd {
-    padding: 4px;
-    background: #cc0;
+    padding: 1px;
+    color: #111;
+    background: #fff;
+    border: 1px solid #000;
+    border-radius: 3px;
 }
 li {
     color: #007;

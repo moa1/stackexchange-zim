@@ -11,7 +11,7 @@ def select_user_home(cursor, Id, PrevUserId, NextUserId):
     user["PrevPage"]={"Id":PrevUserId}
     user["NextPage"]={"Id":NextUserId}
     if user["AboutMe"]:
-        user["AboutMe"]=rewriteurl.rewrite_urls(cursor,user["AboutMe"],stackexchange_domain)
+        user["AboutMe"]=rewriteurl.rewrite_urls_in_html(cursor,user["AboutMe"],stackexchange_domain)
     def get_badges(badgeclass):
         cursor.execute('select * from Badges where UserId=? and Class=? order by Name,Date desc', (Id,badgeclass))
         res=cursor.fetchall()

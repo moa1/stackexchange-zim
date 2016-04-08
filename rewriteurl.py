@@ -68,6 +68,8 @@ def internal_url_for_stackexchange_url(cursor,url,stackexchange_domain):
     "Return the internal url for the given `url` in the given `stackexchange_domain`, or None if there is no internal url for the `url`. Query the database accessible by `cursor` to validate that `url` points to an accessible object in the database, and return None otherwise."
     if url.startswith("http://"):
         url=url[7:]
+    elif url.startswith("https://"):
+        url=url[8:]
     l=url.split("/")
     if len(l)<=0:
         return None
@@ -117,7 +119,7 @@ def internal_url_for_stackexchange_url(cursor,url,stackexchange_domain):
         return internal_url_for_user(cursor,user_id)
     return None
 
-def rewrite_urls(cursor,html,stackexchange_domain):
+def rewrite_urls_in_html(cursor,html,stackexchange_domain):
     "Given the HTML fragment `html`, replace stackexchange urls that point to `stackexchange_domain` by the corresponding internal urls if they exist in the database accessible using `cursor`."
     # encapsulate the html in <html><body> tags so that the parser doesn't just parse the first tag
     html="<html><body>"+html+"</body></html>"
@@ -154,6 +156,45 @@ def rewrite_urls(cursor,html,stackexchange_domain):
     newhtml=newhtml[12:-14]
     return newhtml
 
+def rewrite_urls_in_text(cursor,text,stackexchange_domain):
+    "Given the text fragment `text`, replace stackexchange urls that point to `stackexchange_domain` by the corresponding internal urls if they exist in the database accessible using `cursor`."
+    newtext=u""
+    start=0
+    http_domain="http://"+stackexchange_domain+"/"
+    https_domain="https://"+stackexchange_domain+"/"
+    while True:
+        #print newtext,text[start:]
+        pos=text.find("http",start)
+        if pos==-1:
+            newtext+=text[start:]
+            break
+        if text[pos:].startswith(http_domain):
+            end=pos+len(http_domain)
+        elif text[pos:].startswith(https_domain):
+            end=pos+len(https_domain)
+        else:
+            newtext+=text[start:pos+1]
+            start=pos+1
+            continue
+        for i in range(end,len(text)):
+            ch=text[i]
+            # this is a hack but should work on stackoverflow domains.
+            if "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789-_./".find(ch)==-1:
+                end=i
+                break
+        href=text[pos:end]
+        internal_url=internal_url_for_stackexchange_url(cursor,href,stackexchange_domain)
+        #print href,internal_url
+        if internal_url:
+            newlink="<a class=\"internallink\" href=\""+internal_url+"\">"+text[pos:end]+"</a>"
+            newtext+=text[start:pos]+newlink
+            start=end
+        else:
+            newtext+=text[start:pos+1]
+            start=pos+1
+            continue
+    return newtext
+    
 if __name__=="__main__":
     from utils import *
 
@@ -161,11 +202,15 @@ if __name__=="__main__":
 
     with connection:
         cursor=connection.cursor()
-        cursor.execute("select Id,ParentId,Body from Posts")
+        cursor.execute("select Id,PostId as ParentId,Text as Body from Comments")
+        #cursor.execute("select Id,PostId as ParentId,Text as Body from Comments where Id in (54035,42,3089)")
+        #cursor.execute("select Id,ParentId,Body from Posts")
         #cursor.execute('select Id,ParentId,Body from Posts where Id=527')
         rows=cursor.fetchall()
         for row in rows:
             html=row["Body"]
             Id=row["Id"]
             ParentId=row["ParentId"]
-            print Id,rewrite_urls(cursor,html,stackexchange_domain)
+            newhtml=rewrite_urls_in_text(cursor,html,stackexchange_domain)
+            #newhtml=rewrite_urls_in_html(cursor,html,stackexchange_domain)
+            print Id,newhtml
