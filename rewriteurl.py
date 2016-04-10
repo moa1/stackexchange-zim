@@ -49,7 +49,6 @@ def internal_url_for_tag_name(cursor,tag_name):
         return None
     return "tag%i.html" % (row["Id"],)
 
-
 def internal_url_for_user(cursor,user_id):
     cursor.execute("select Id from Users where Id=?",(user_id,))
     row=cursor.fetchone()
@@ -73,7 +72,7 @@ def internal_url_for_stackexchange_url(cursor,url,stackexchange_domain):
     l=url.split("/")
     if len(l)<=0:
         return None
-    if l[0]!=stackexchange_domain: #only accept urls with the given stackexchange_domain
+    if l[0]!=stackexchange_domain and l[0]!="": #only accept urls with the given stackexchange_domain or local references
         return None
 #    print Id,ParentId,url
     if len(l)<=1:
@@ -81,6 +80,11 @@ def internal_url_for_stackexchange_url(cursor,url,stackexchange_domain):
     elif l[1] in ("q","questions"):
         if len(l)<=2:
             return None
+        elif l[2]=="tagged":
+            if len(l)<=3:
+                return None
+            tag_name=l[3]
+            return internal_url_for_tag_name(cursor,tag_name)
         question_id=safe_int(l[2])
         if not question_id:
             return None
