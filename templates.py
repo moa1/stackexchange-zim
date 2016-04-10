@@ -187,24 +187,27 @@ def _parse_template(fsplit,template_name):
                         #print "inner_fun",inner_fun
                         ret=[]
                         for i,e in enumerate(var):
-                            er=inner_fun(funs,e,debug+["#"+name+"["+str(i)+"]"])
+                            er=inner_fun(funs,e,debug+["#"+name+"["+str(i)+"]"] if debug else debug)
                             ret.append(er)
                         return "".join(ret)
                     elif type(var)==dict:
-                        return inner_fun(funs,data[name],debug+["#"+name+"[]"])
+                        return inner_fun(funs,var,debug+["#"+name+"[]"] if debug else debug)
                     else:
                         if var:
-                            return inner_fun(funs,data,debug+["#"+name])
+                            return inner_fun(funs,data,debug+["#"+name] if debug else debug)
                         else:
                             return ""
                 return render_section
             def make_render_inverted(name,inner_fun,template_name):
                 def render_inverted(funs,data,debug=[]):
-                    var=data[name]
+                    try:
+                        var=data[name]
+                    except KeyError:
+                        raise Exception("Cannot render template '%s' (path %s): variable '%s' not found in '%s'" % (str(template_name),", ".join(['{{'+d+'}}' for d in debug]),name,data.keys()))
                     if var:
                         return ""
                     else:
-                        return inner_fun(funs,data,debug+["^"+name])
+                        return inner_fun(funs,data,debug+["^"+name] if debug else debug)
                 return render_inverted
             if head.mode=="#":
                 inst.append(make_render_section(name,inner_fun,template_name))
@@ -214,10 +217,10 @@ def _parse_template(fsplit,template_name):
         elif head.mode==">": #partial
             name=str(head.name)
             def make_render_partial(name,template_name):
-                #print "template_name:",template_name,"name:",name
                 def render_partial(funs,data,debug=[]):
-                    #print "template_name:",template_name,"name:",name
-                    return funs[name](funs,data,debug+[">"+name])
+                    if name not in funs:
+                        raise Exception("Cannot render template '%s' (path %s): partial '%s' not found in '%s'" % (str(template_name),", ".join(['{{'+d+'}}' for d in debug]),name,funs.keys()))
+                    return funs[name](funs,data,debug+[">"+name] if debug else debug)
                 return render_partial
             inst.append(make_render_partial(name,template_name))
             fsplit=fsplit[1:]
@@ -226,8 +229,11 @@ def _parse_template(fsplit,template_name):
             name=head.name
             def make_render_variable(name,template_name):
                 def render_variable(funs,data,debug=[]):
-                    #print "debug:",debug,"{{%s}}"%(name,)
-                    return unicode(data[name])
+                    try:
+                        var=data[name]
+                    except KeyError:
+                        raise Exception("Cannot render template '%s' (path %s): variable '%s' not found in '%s'" % (str(template_name),", ".join(['{{'+d+'}}' for d in debug]),name,data.keys()))
+                    return unicode(var)
                 return render_variable
             inst.append(make_render_variable(name,template_name))
             fsplit=fsplit[1:]
@@ -312,9 +318,9 @@ def parse_templates(templates):
 def make_own_renderer(templates,stripped_html=False):
     funs=parse_templates(templates)
     class helper:
-        def render(self,template,data):
+        def render(self,template,data,debug=False):
             template_fun=parse_template(template)
-            text=template_fun(funs,data)
+            text=template_fun(funs,data,[""] if debug else [])
             if stripped_html:
                 text=strip_html(text)
             return text
@@ -336,15 +342,18 @@ def make_pystache_renderer(templates,stripped_html=False):
 #make_renderer=make_pystache_renderer
 make_renderer=make_own_renderer
 
-def render(template,data):
+def render(template,data,debug=False):
     renderer=make_renderer({"template":template})
-    text=renderer.render("{{>template}}",data)
+    if debug:
+        text=renderer.render("{{>template}}",data,debug)
+    else:
+        text=renderer.render("{{>template}}",data)
     return text
 
 
 if __name__=="__main__":
-    renderer1=make_pystache_renderer()
-    renderer2=make_own_renderer()
+    renderer1=make_pystache_renderer(templates)
+    renderer2=make_own_renderer(templates)
     data={"Id":-1,"DisplayName":"CommunityWiki","RenderDate":{"Date":"2016-01-01","Time":"00:00"},"ReputationHumanReadable":False,"NumBadges":False}
 
     def check():
@@ -353,12 +362,15 @@ if __name__=="__main__":
         assert r1==r2,"r1!=r2 where\nr1=%s\nr2=%s" % (r1,r2)
 
     def main():
+        import time
+        start=time.clock()
         res=[]
-        for i in range(1000):
-            res.append(renderer2.render("{{>userplate}}",data))
+        for i in range(3000):
+            res.append(renderer2.render("{{>userplate}}",data,debug=True))
+        print "main took %f seconds" % (time.clock()-start)
 
     check()
-    #main()
+    main()
 
     print "'%s'" %(strip_html("   <a> x  </a> <a>  \t \n </a>   xc"),)
     print "'%s'" %(strip_html(" x  <a> x  </a> <a>  \t \n </a>   \t"),)
