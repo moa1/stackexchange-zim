@@ -2,9 +2,9 @@
 # -*- coding:utf-8 -*-
 
 from utils import *
-import pystache
 import codecs
 import rewriteurl
+import templates
 
 def select_user_home(cursor, Id, PrevUserId, NextUserId):
     user=select_user(cursor, Id)
@@ -42,7 +42,7 @@ def select_user_home(cursor, Id, PrevUserId, NextUserId):
 
     return user
 
-user_template=pystache.parse(u"""<!DOCTYPE html>
+user_template=u"""<!DOCTYPE html>
 <html>
   <head>
     <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
@@ -98,13 +98,15 @@ User Id: {{Id}}
 <p><a class="internallink" href="tag{{Id}}.html">{{TagName}}</a></p>
 {{/tags}}
   </body>
-</html>""")
+</html>"""
 
-def render_user_home(user):
-    user_html=pystache.render(user_template,user)
+def render_user_home(user,renderer):
+    user_html=renderer.render("{{>user_html}}",user)
     return user_html
 
 def make_users_html(only_ids=None):
+    renderer=templates.make_renderer({"user_html":user_template})
+
     cursor.execute('select Id from Users')
     user_ids = [row["Id"] for row in cursor]
     if only_ids:
@@ -118,7 +120,7 @@ def make_users_html(only_ids=None):
         print "User",user_home["Id"],"/",max_user_id
 
         with codecs.open(file_path+"user"+str(user_home["Id"])+".html", "w", "utf-8") as f:
-            f.write(render_user_home(user_home))
+            f.write(render_user_home(user_home,renderer))
 
 (connection,cursor)=init_db()
 

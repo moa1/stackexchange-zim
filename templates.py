@@ -1,8 +1,7 @@
 #!/usr/bin/python
 # -*- coding:utf-8 -*-
 
-import pystache
-
+# templates are in mustache format
 templates={
     "date":\
 u"""<span class=\"date\">{{Date}}</span><span class=\"time\">{{Time}}</span>""",
@@ -92,6 +91,7 @@ u"""
 u"""<!DOCTYPE html>
 <html>
   <head>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
     <title>{{TagName}}</title>
     <link href="se.css" rel="stylesheet" type="text/css">
   </head>
@@ -119,6 +119,250 @@ Tag Id: {{Id}}
 """
     }
 
-def make_renderer():
+def strip_html(html):
+    "Strip text between closing and opening html tags if it only consists of whitespace."
+    # FIXME: this erroneously removes the newline in "<code>hello<div>\n</div>world</code>"
+    new=[]
+    CLOSED=0
+    OPENED=1
+    state=CLOSED
+    i=0
+    while i<len(html):
+        ilast=i
+        #print ilast,state
+        if state==CLOSED:
+            i=html.find("<",i)
+            if i==-1:
+                i=len(html)
+            else:
+                state=OPENED
+            between=html[ilast:i]
+            if between.strip()!="":
+                new.append(between)
+        elif state==OPENED:
+            i=html.find(">",i)
+            assert i>=0
+            i+=1
+            new.append(html[ilast:i])
+            state=CLOSED
+    assert state==CLOSED
+    return "".join(new)
+
+# Own Renderer, like pystache but faster
+def _parse_template(fsplit,template_name):
+    inst=[]
+    while fsplit!=[]:
+        head=fsplit[0]
+        if type(head)==unicode or type(head)==str:
+            def make_render_string(head,template_name):
+                def render_string(funs,data,debug=[]):
+                    return head
+                return render_string
+            if head!="":
+                inst.append(make_render_string(head,template_name))
+            fsplit=fsplit[1:]
+        elif head.mode=="#" or head.mode=="^": #section and inverted section
+            name=head.name
+            # search for closing tag
+            end_index=-1
+            for i in range(1,len(fsplit)):
+                if type(fsplit[i]) in (str,unicode): continue
+                if fsplit[i].name==head.name and fsplit[i].mode=="/":
+                    end_index=i
+                    break
+            assert end_index>0
+            #print template_name
+            #if template_name=="question":
+            #    print head.mode,head.name
+            #    print fsplit[1:end_index]
+            inner_fun=_parse_template(fsplit[1:end_index],template_name)
+            def make_render_section(name,inner_fun,template_name):
+                def render_section(funs,data,debug=[]):
+                    try:
+                        var=data[name]
+                    except KeyError:
+                        raise Exception("Cannot render template '%s' (path %s): variable '%s' not found in '%s'" % (str(template_name),", ".join(['{{'+d+'}}' for d in debug]),name,data.keys()))
+                    if type(var)==list:
+                        #print "list(",name,"):",var
+                        #print "inner_fun",inner_fun
+                        ret=[]
+                        for i,e in enumerate(var):
+                            er=inner_fun(funs,e,debug+["#"+name+"["+str(i)+"]"])
+                            ret.append(er)
+                        return "".join(ret)
+                    elif type(var)==dict:
+                        return inner_fun(funs,data[name],debug+["#"+name+"[]"])
+                    else:
+                        if var:
+                            return inner_fun(funs,data,debug+["#"+name])
+                        else:
+                            return ""
+                return render_section
+            def make_render_inverted(name,inner_fun,template_name):
+                def render_inverted(funs,data,debug=[]):
+                    var=data[name]
+                    if var:
+                        return ""
+                    else:
+                        return inner_fun(funs,data,debug+["^"+name])
+                return render_inverted
+            if head.mode=="#":
+                inst.append(make_render_section(name,inner_fun,template_name))
+            else:
+                inst.append(make_render_inverted(name,inner_fun,template_name))
+            fsplit=fsplit[end_index+1:]
+        elif head.mode==">": #partial
+            name=str(head.name)
+            def make_render_partial(name,template_name):
+                #print "template_name:",template_name,"name:",name
+                def render_partial(funs,data,debug=[]):
+                    #print "template_name:",template_name,"name:",name
+                    return funs[name](funs,data,debug+[">"+name])
+                return render_partial
+            inst.append(make_render_partial(name,template_name))
+            fsplit=fsplit[1:]
+        elif head.mode in ("","{"): #normal variable and non-escaped variable
+            #note that mustache by default html-escapes all variables, but we don't.
+            name=head.name
+            def make_render_variable(name,template_name):
+                def render_variable(funs,data,debug=[]):
+                    #print "debug:",debug,"{{%s}}"%(name,)
+                    return unicode(data[name])
+                return render_variable
+            inst.append(make_render_variable(name,template_name))
+            fsplit=fsplit[1:]
+        else:
+            raise Exception("invalid mode",head.mode)
+    def make_render_combination(inst,template_name):
+        def render_combination(funs,data,debug=[]):
+            #print "inst(",template_name,")",inst
+            return "".join([i(funs,data,debug) for i in inst])
+        return render_combination
+    return make_render_combination(inst,template_name)
+
+class template_var:
+    def __init__(self,var):
+        if var.startswith("{{#"):
+            assert var.endswith("}}")
+            self.mode="#"
+            self.name=var[3:-2]
+        elif var.startswith("{{^"):
+            assert var.endswith("}}")
+            self.mode="^"
+            self.name=var[3:-2]
+        elif var.startswith("{{/"):
+            assert var.endswith("}}")
+            self.mode="/"
+            self.name=var[3:-2]
+        elif var.startswith("{{>"):
+            assert var.endswith("}}")
+            self.mode=">"
+            self.name=var[3:-2]
+        elif var.startswith("{{{"):
+            assert var.endswith("}}}")
+            self.mode="{"
+            self.name=var[3:-3]
+        elif var.startswith("{{"):
+            assert var.endswith("}}")
+            self.mode=""
+            self.name=var[2:-2]
+        else:
+            raise Exception("unknown variable mode",var)
+    def __repr__(self):
+        return "<template_var(%s%s) at 0x%x>" % (self.mode,self.name,id(self))
+
+def parse_template(template,template_name=None):
+    new=[]
+    ilastnew=0
+    i=0
+    while i<len(template):
+        if template.startswith("{{",i):
+            if template.startswith("{{{",i):
+                end=template.find("}}}",i)+3
+            else:
+                end=template.find("}}",i)+2
+            varpat=template[i:end]
+            new.append(template[ilastnew:i])
+            new.append(template_var(varpat))
+            i=end
+            ilastnew=end
+        else:
+            i+=1
+    new.append(template[ilastnew:i])
+    return _parse_template(new,template_name)
+
+def parse_template_old(template,template_name=None):
+    fsplit=template.split("{{")
+    new=[fsplit[0]]
+    while True:
+        fsplit=fsplit[1:]
+        if fsplit==[]: break
+        f=fsplit[0].split("}}")
+        assert len(f)==2
+        new.append(template_var(f[0]))
+        new.append(f[1])
+    return _parse_template(new,template_name)
+
+def parse_templates(templates):
+    funs={}
+    for key in templates.keys():
+        funs[key]=parse_template(templates[key],key)
+    return funs
+
+def make_own_renderer(templates,stripped_html=False):
+    funs=parse_templates(templates)
+    class helper:
+        def render(self,template,data):
+            template_fun=parse_template(template)
+            text=template_fun(funs,data)
+            if stripped_html:
+                text=strip_html(text)
+            return text
+    return helper()
+
+# pystache renderer
+def make_pystache_renderer(templates,stripped_html=False):
+    import pystache
     renderer=pystache.Renderer(partials=templates,missing_tags="strict")
-    return renderer
+    class helper:
+        def render(self,template,data):
+            text=renderer.render(template,data)
+            if stripped_html:
+                text=strip_html(text)
+            return text
+    return helper()
+
+# set renderer here
+#make_renderer=make_pystache_renderer
+make_renderer=make_own_renderer
+
+def render(template,data):
+    renderer=make_renderer({"template":template})
+    text=renderer.render("{{>template}}",data)
+    return text
+
+
+if __name__=="__main__":
+    renderer1=make_pystache_renderer()
+    renderer2=make_own_renderer()
+    data={"Id":-1,"DisplayName":"CommunityWiki","RenderDate":{"Date":"2016-01-01","Time":"00:00"},"ReputationHumanReadable":False,"NumBadges":False}
+
+    def check():
+        r1=renderer1.render("{{>userplate}}",data)
+        r2=renderer2.render("{{>userplate}}",data)
+        assert r1==r2,"r1!=r2 where\nr1=%s\nr2=%s" % (r1,r2)
+
+    def main():
+        res=[]
+        for i in range(1000):
+            res.append(renderer2.render("{{>userplate}}",data))
+
+    check()
+    #main()
+
+    print "'%s'" %(strip_html("   <a> x  </a> <a>  \t \n </a>   xc"),)
+    print "'%s'" %(strip_html(" x  <a> x  </a> <a>  \t \n </a>   \t"),)
+
+    s="<code>hello<div>\n</div>world</code>"
+    print s
+    print strip_html(s)

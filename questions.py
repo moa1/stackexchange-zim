@@ -61,7 +61,7 @@ def render_question(cursor, Id, renderer, PrevId, NextId):
     return renderer.render("{{>question_html}}",question)
 
 def make_questions_html(only_ids=None):
-    renderer=templates.make_renderer()
+    renderer=templates.make_renderer(templates.templates)
     
     cursor.execute('select Id from Posts where PostTypeId="1"')
     post_ids = [row["Id"] for row in cursor]

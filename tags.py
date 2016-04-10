@@ -34,7 +34,7 @@ def render_tag(cursor,Id,renderer,PrevId,NextId):
     return renderer.render("{{>tag_html}}",tag)
 
 def make_tags_html():
-    renderer=templates.make_renderer()
+    renderer=templates.make_renderer(templates.templates)
 
     cursor.execute('select Id from Tags')
     tag_ids = [row["Id"] for row in cursor]

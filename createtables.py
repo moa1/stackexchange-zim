@@ -74,5 +74,6 @@ if __name__=="__main__":
     cursor.execute("create index Comments_PostId on Comments(PostId)")
     cursor.execute("create index Badges_UserId on Badges(UserId)")
     cursor.execute("create index Badges_Name on Badges(Name)")
+    cursor.execute("create index PostsTags_TagId on PostsTags(TagId)")
     
     connection.close()

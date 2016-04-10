@@ -5,10 +5,10 @@
 # TODO: make that external image alternative texts are shown in a different color, maybe with a link to the external image.
 
 from utils import *
-import pystache
 import codecs
+import templates
 
-templates={
+indices_templates={
     'sites_index_template':\
 u"""<html>
   <head>
@@ -56,7 +56,7 @@ u"""<html>
   </body>
 </html>"""}
 
-renderer=pystache.Renderer(partials=templates,missing_tags="strict")
+renderer=templates.make_renderer(indices_templates)
 
 
 def write_index_html(site_type, sites, file_mask, sub_index_size=1000):

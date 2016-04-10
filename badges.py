@@ -2,9 +2,9 @@
 # -*- coding:utf-8 -*-
 
 from utils import *
-import pystache
 import codecs
 import rewriteurl
+import templates
 
 def select_badge_home(cursor, Name, PrevName, NextName):
     cursor.execute('select Name,Class,TagBased from Badges where Name=? limit 1', (Name,))
@@ -14,6 +14,8 @@ def select_badge_home(cursor, Name, PrevName, NextName):
     if badge["TagBased"]=="True":
         cursor.execute('select (select Id from Tags where TagName=Badges.Name) as Id, Name from Badges where Name=? limit 1', (Name,))
         badge["Tag"]=cursor.fetchone()
+    else:
+        badge["Tag"]=None
         
     badge["PrevPage"]={"Name":PrevName}
     badge["NextPage"]={"Name":NextName}
@@ -26,7 +28,7 @@ def select_badge_home(cursor, Name, PrevName, NextName):
 
     return badge
 
-badge_template=pystache.parse(u"""<!DOCTYPE html>
+badge_template=u"""<!DOCTYPE html>
 <html>
   <head>
     <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
@@ -53,13 +55,15 @@ Badge Name: {{Name}}
 <p>Awarded to <a class="internallink" href="user{{UserId}}.html">{{UserName}}</a> on <span class="date">{{#RenderDate}}{{Date}} {{Time}}{{/RenderDate}}</span></p>
 {{/Awarded}}
   </body>
-</html>""")
+</html>"""
 
-def render_badge_home(badge):
-    html=pystache.render(badge_template,badge)
+def render_badge_home(badge,renderer):
+    html=renderer.render("{{>badge_html}}",badge)
     return html
 
 def make_badges_html(only_names=None):
+    renderer=templates.make_renderer({"badge_html":badge_template})
+
     cursor.execute('select distinct Name from Badges order by Name')
     badge_names = [row["Name"] for row in cursor]
     if only_names:
@@ -72,7 +76,7 @@ def make_badges_html(only_names=None):
         print "Badge",i,"/",len_badge_names
 
         with codecs.open(file_path+"badge"+badge_name+".html", "w", "utf-8") as f:
-            f.write(render_badge_home(badge_home))
+            f.write(render_badge_home(badge_home,renderer))
 
 (connection,cursor)=init_db()
 
