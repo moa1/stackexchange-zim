@@ -22,11 +22,11 @@ def select_user_home(cursor, Id, PrevUserId, NextUserId):
     user["badgesclass2"]=get_badges("2")
     user["badgesclass3"]=get_badges("3")
 
-    cursor.execute('select * from Posts where OwnerUserId=? and PostTypeId="1"', (Id,))
+    cursor.execute('select * from Posts where OwnerUserId=? and PostTypeId="1" order by (0+Score) desc', (Id,))
     user["questions"]=cursor.fetchall()
     user["questions_count"]=len(user["questions"])
     
-    cursor.execute('select Id,ParentId from Posts where OwnerUserId=? and PostTypeId="2"', (Id,))
+    cursor.execute('select Id,ParentId from Posts where OwnerUserId=? and PostTypeId="2" order by (0+Score) desc', (Id,))
     user["answers"]=cursor.fetchall()
     user["answers_count"]=len(user["answers"])
     for row in user["answers"]:

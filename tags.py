@@ -20,7 +20,7 @@ def select_tag(cursor,Id):
     else:
         tag["WikiPost"]=None
 
-    cursor.execute('select * from Posts where Id in (select PostId from PostsTags where TagId=?)', (Id,))
+    cursor.execute('select * from Posts where Id in (select PostId from PostsTags where TagId=?) order by (0+Score) desc', (Id,))
     tag["questions"]=cursor.fetchall()
 
     return tag
