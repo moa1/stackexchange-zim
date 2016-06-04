@@ -4,10 +4,13 @@ include config.py
 stackexchange_domain := $(patsubst "%",%,$(stackexchange_domain))
 zim_description="Questions and answer site http://${stackexchange_domain}"
 zim_author="Users of http://$(stackexchange_domain) and Stackexchange"
+stackexchange_dump := $(patsubst "%",%,$(stackexchange_dump))
 
 .PHONY: clean
 
 all: temp/stackexchange-dump.zim
+
+all-stackoverflow: database-stackoverflow temp/stackexchange-dump.zim
 
 temp: temp/created
 temp/created:
@@ -16,9 +19,25 @@ temp/created:
 
 database: temp/finished-database
 temp/finished-database: temp/created
-	# TODO: pipe files into the filler script, like so: "p7zip -k -d -c h1.7z h2.7z | python filltables.py"
-	python createtables.py
-	python filltables.py
+	p7zip -k -c -d "$(stackexchange_dump)" | python remove-head.py  | python createtables.py
+	python createindices.py
+	p7zip -k -c -d "$(stackexchange_dump)" | python remove-head.py  | python filltables.py
+	python fillPostsTagstable.py
+	touch temp/finished-database
+
+database-stackoverflow: temp/finished-database-stackoverflow
+temp/finished-database-stackoverflow: temp/created
+	p7zip -k -c -d "$(stackexchange_dump)Tags.7z" | python remove-head.py  | python createtables.py
+	p7zip -k -c -d "$(stackexchange_dump)Badges.7z" | python remove-head.py  | python createtables.py
+	p7zip -k -c -d "$(stackexchange_dump)Comments.7z" | python remove-head.py  | python createtables.py
+	p7zip -k -c -d "$(stackexchange_dump)Posts.7z" | python remove-head.py  | python createtables.py
+	p7zip -k -c -d "$(stackexchange_dump)Users.7z" | python remove-head.py  | python createtables.py
+	python createindices.py
+	p7zip -k -c -d "$(stackexchange_dump)Tags.7z" | python remove-head.py  | python filltables.py
+	p7zip -k -c -d "$(stackexchange_dump)Badges.7z" | python remove-head.py  | python filltables.py
+	p7zip -k -c -d "$(stackexchange_dump)Comments.7z" | python remove-head.py  | python filltables.py
+	p7zip -k -c -d "$(stackexchange_dump)Posts.7z" | python remove-head.py  | python filltables.py
+	p7zip -k -c -d "$(stackexchange_dump)Users.7z" | python remove-head.py  | python filltables.py
 	python fillPostsTagstable.py
 	touch temp/finished-database
 

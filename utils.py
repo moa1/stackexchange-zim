@@ -25,7 +25,7 @@ def init_db():
 
 def insert_table_attributes(cursor,table_attributes):
     # write attributes into table Attributes
-    cursor.execute("create table Attributes(Id integer primary key,TableName text,AttributeName text)")
+    cursor.execute("create table if not exists Attributes(Id integer primary key,TableName text,AttributeName text)")
     for table in table_attributes.keys():
         for attribute in table_attributes[table]:
             cursor.execute("insert into Attributes(TableName,AttributeName) values(?,?)",(table,attribute,))

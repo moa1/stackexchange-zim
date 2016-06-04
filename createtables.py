@@ -6,34 +6,65 @@ import os
 import lxml
 from pysqlite2 import dbapi2 as sqlite3
 from utils import *
+import sys
+import codecs
 
-def get_all_attributes(file,table):
+def get_all_attributes(file,tables):
     "Return the list of all attribute names the (XML) file has as row elements."
-    parser = lxml.etree.XMLPullParser(events=('start', 'end'),tag="row")
+    parser = lxml.etree.XMLPullParser(events=('start', 'end'),encoding="UTF-8")
     events = parser.read_events()
 
-    all_keys = {}
+    table_attributes = {}
 
-    total_size=os.fstat(file.fileno()).st_size
+    #total_size=os.fstat(file.fileno()).st_size
+    table=None
+    block_size=100000
+    buf_pos=0
+    skip=True
     while True:
-        buf=file.read(100000)
-        buf_pos=file.tell()
-        print "%s.xml %i / %i (%f%%)" % (table,buf_pos,total_size,100.0*buf_pos/total_size)
+        buf=file.read(block_size)
+        buf_pos+=block_size
+        #buf_pos=file.tell()
+        #print "create %s.xml %i / %i (%f%%)" % (table,buf_pos,total_size,100.0*buf_pos/total_size)
+        print "create %s.xml %i" % (table,buf_pos)
         if buf=="":
             break
         parser.feed(buf)
         for action, elem in events:
-            if action=="end":
-                row={}
-                for name, value in elem.items():
-                    all_keys[name]=True
+            if action=="start":
+                if elem.tag in tables.keys():
+                    table=tables[elem.tag]
+                    table_attributes[table]=dict()
+                    skip=False
+                elif elem.tag=="row":
+                    pass
+                else:
+                    table=None
+                    skip=True
+            elif action=="end":
+                if elem.tag=="row" and not skip:
+                    row={}
+                    for name, value in elem.items():
+                        table_attributes[table][name]=True
                 elem.clear()
 
     root = parser.close()
 
-    keys = all_keys.keys()
-    keys.sort()
+    keys=dict()
+    for table in table_attributes:
+        k = table_attributes[table].keys()
+        k.sort()
+        keys[table]=k
     return keys
+
+def get_all_attributes_precomputed():
+    a=dict()
+    a["Comments"]=["CreationDate","Id","PostId","Score","Text","UserDisplayName","UserId"]
+    a["Posts"]=["AcceptedAnswerId","AnswerCount","Body","ClosedDate","CommentCount","CommunityOwnedDate","CreationDate","FavoriteCount","Id","LastActivityDate","LastEditDate","LastEditorDisplayName","LastEditorUserId","OwnerDisplayName","OwnerUserId","ParentId","PostTypeId","Score","Tags","Title","ViewCount"]
+    a["Users"]=["AboutMe","AccountId","Age","CreationDate","DisplayName","DownVotes","Id","LastAccessDate","Location","ProfileImageUrl","Reputation","UpVotes","Views","WebsiteUrl"]
+    a["Badges"]=["Class","Date","Id","Name","TagBased","UserId"]
+    a["Tags"]=["Count","ExcerptPostId","Id","TagName","WikiPostId"]
+    return a
 
 def create_table(cursor, table_name, attributes):
     primary_key="Id"
@@ -43,15 +74,18 @@ def create_table(cursor, table_name, attributes):
     cursor.execute(statement)
 
 if __name__=="__main__":
-    #tables=["Badges","PostHistory","Posts","Users","Comments","PostLinks","Tags","Votes"]
-    tables=["Badges","Users","Posts","Comments","Tags"]
+    if len(sys.argv)!=1:
+        print "Syntax: cat DUMP-FILE-TO-CREATE-TABLES-FOR.XML | ",sys.argv[0]
+        sys.exit(1)
+    
+    tables={"badges":"Badges","users":"Users","posts":"Posts","comments":"Comments","tags":"Tags"}
 
-    table_attributes={}
-    for table in tables:
-        print table
-        with open(stackexchange_dump_dir+"/"+table+".xml","r") as f:
-            attributes=get_all_attributes(f,table)
-            table_attributes[table]=attributes
+    #with open(stackexchange_dump_dir+"/"+table+".xml","r") as f:
+    #    table_attributes=get_all_attributes(f,tables)
+    
+    #table_attributes=get_all_attributes(sys.stdin,tables)
+    
+    table_attributes=get_all_attributes_precomputed()
 
     try:
         os.unlink(dbfile)
@@ -63,17 +97,8 @@ if __name__=="__main__":
     insert_table_attributes(cursor,table_attributes)
 
     # create each table with its attributes
-    for table in tables:
+    for table in table_attributes:
         attributes=table_attributes[table]
         create_table(cursor,table,attributes)
 
-    cursor.execute("create table PostsTags(PostId integer, TagId integer, primary key (PostId, TagId))")
-
-    cursor.execute("create index Posts_OwnerUserId on Posts(OwnerUserId)")
-    cursor.execute("create index Posts_ParentId on Posts(ParentId)")
-    cursor.execute("create index Comments_PostId on Comments(PostId)")
-    cursor.execute("create index Badges_UserId on Badges(UserId)")
-    cursor.execute("create index Badges_Name on Badges(Name)")
-    cursor.execute("create index PostsTags_TagId on PostsTags(TagId)")
-    
     connection.close()

@@ -19,9 +19,12 @@ def fill_tag_table(connection):
     cursor.execute('select Id,Tags from Posts where Tags NOT NULL')
     rows=cursor.fetchall()
     max_Id=max([row["Id"] for row in rows])
+    i=0
     for row in rows:
         post_id=row["Id"]
-        print "PostsTags",post_id,"/",max_Id
+        i+=1
+        if (i%10)==0:
+            print "PostsTags",post_id,"/",max_Id
         tags=row["Tags"]
         parsed_tags=parse_tags(tags)
         for tag in parsed_tags:
