@@ -33,26 +33,26 @@ badge_template=u"""<!DOCTYPE html>
   <head>
     <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
     <title>Badge {{Name}}</title>
-    <link href="se.css" rel="stylesheet" type="text/css">
+    <link href="../se.css" rel="stylesheet" type="text/css">
   </head>
     <body>
 <div class="linkheader">
-{{#NextPage}}<a class="internallink" href="badge{{Name}}.html">Next Badge</a>{{/NextPage}}
-{{#PrevPage}}<a class="internallink" href="badge{{Name}}.html">Prev Badge</a>{{/PrevPage}}
-<a class="internallink" href="index_badges.html">Badges Index</a>
-<a class="internallink" href="../index.html">Home</a>
+{{#NextPage}}<a class="internallink" href="badge/{{Name}}.html">Next Badge</a>{{/NextPage}}
+{{#PrevPage}}<a class="internallink" href="badge/{{Name}}.html">Prev Badge</a>{{/PrevPage}}
+<a class="internallink" href="../index_badges.html">Badges Index</a>
+<a class="internallink" href="../../index.html">Home</a>
 Badge Name: {{Name}}
 </div>
 <div class=\"badgeinfo\">
 <p>Badge {{Name}}</p>
 <p>Class: <span class="class{{Class}}">{{ClassMetal}}</span></p>
-{{#Tag}}Based on tag <a class="internallink" href="tag{{Id}}.html">{{Name}}</a>{{/Tag}}
+{{#Tag}}Based on tag <a class="internallink" href="../tag/{{Id}}.html">{{Name}}</a>{{/Tag}}
 <p><a class="internallink" href="#awarded">Awarded {{Awarded_count}} times</a></p>
 </div>
 <h1>{{Name}}</h1>
 <h2>Awards<a class="internallink" name="awarded" href="#awarded"><span style="float:right;">¶</span></a></h2>
 {{#Awarded}}
-<p>Awarded to <a class="internallink" href="user{{UserId}}.html">{{UserName}}</a> on <span class="date">{{#RenderDate}}{{Date}} {{Time}}{{/RenderDate}}</span></p>
+<p>Awarded to <a class="internallink" href="../user/{{UserId}}.html">{{UserName}}</a> on <span class="date">{{#RenderDate}}{{Date}} {{Time}}{{/RenderDate}}</span></p>
 {{/Awarded}}
   </body>
 </html>"""
@@ -75,7 +75,7 @@ def make_badges_html(only_names=None):
         badge_home=select_badge_home(cursor, badge_name, prev_badge_name, next_badge_name)
         print "Badge",i,"/",len_badge_names
 
-        with codecs.open(file_path+"badge"+badge_name+".html", "w", "utf-8") as f:
+        with codecs.open(file_path+"badge/"+badge_name+".html", "w", "utf-8") as f:
             f.write(render_badge_home(badge_home,renderer))
 
 (connection,cursor)=init_db()

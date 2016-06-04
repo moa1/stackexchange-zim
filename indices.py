@@ -80,37 +80,37 @@ def write_index_html(site_type, sites, file_mask, sub_index_size=1000):
         f.write(renderer.render('{{>sites_index_template}}',{"site_type":site_type,"sites_count":len(sites),"sub_indices":sub_indices}))
     
 def write_badges_index_html(cursor):
-    cursor.execute('select distinct Name as Id,Name as Title,"badge"||Name||".html" as Link from Badges order by Name')
+    cursor.execute('select distinct Name as Id,Name as Title,"badge/"||Name||".html" as Link from Badges order by Name')
     users=cursor.fetchall()
 
     write_index_html("Badges",users,"index_badges%s.html")
 
 def write_users_index_html(cursor):
-    cursor.execute('select Id,DisplayName as Title,"user"||Id||".html" as Link from Users order by DisplayName')
+    cursor.execute('select Id,DisplayName as Title,"user/"||Id||".html" as Link from Users order by DisplayName')
     users=cursor.fetchall()
 
     write_index_html("Users",users,"index_users%s.html")
 
 def write_users_by_reputation_index_html(cursor):
-    cursor.execute('select Id,Reputation||": "||DisplayName as Title,"user"||Id||".html" as Link from Users order by (Reputation+0) desc')
+    cursor.execute('select Id,Reputation||": "||DisplayName as Title,"user/"||Id||".html" as Link from Users order by (Reputation+0) desc')
     questions=cursor.fetchall()
 
     write_index_html("Users by Reputation",questions,"index_users_by_reputation%s.html")
 
 def write_questions_index_html(cursor):
-    cursor.execute('select Id,Title,"question"||Id||".html" as Link from Posts where PostTypeId="1" order by Title')
+    cursor.execute('select Id,Title,"question/"||Id||".html" as Link from Posts where PostTypeId="1" order by Title')
     questions=cursor.fetchall()
 
     write_index_html("Questions",questions,"index_questions%s.html")
 
 def write_questions_by_score_index_html(cursor):
-    cursor.execute('select Id,Score||": "||Title as Title,"question"||Id||".html" as Link from Posts where PostTypeId="1" order by (Score+0) desc')
+    cursor.execute('select Id,Score||": "||Title as Title,"question/"||Id||".html" as Link from Posts where PostTypeId="1" order by (Score+0) desc')
     questions=cursor.fetchall()
 
     write_index_html("Questions by Score",questions,"index_questions_by_score%s.html")
 
 def write_tags_index_html(cursor):
-    cursor.execute('select Id,TagName as Title,"tag"||Id||".html" as Link from Tags order by TagName')
+    cursor.execute('select Id,TagName as Title,"tag/"||Id||".html" as Link from Tags order by TagName')
     tags=cursor.fetchall()
 
     write_index_html("Tags",tags,"index_tags%s.html")

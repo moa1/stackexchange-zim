@@ -8,7 +8,7 @@ def internal_url_for_question(cursor,question_id):
     row=cursor.fetchone()
     if not row:
         return None
-    return "question%i.html" % row["Id"]
+    return "../question/%i.html" % row["Id"]
 
 def internal_url_for_answer(cursor,answer_id):
     cursor.execute('select Id,ParentId from Posts where Id=? and PostTypeId="2"',(answer_id,))
@@ -16,7 +16,7 @@ def internal_url_for_answer(cursor,answer_id):
     if not row:
         return None
     assert row["ParentId"] #if this happens, there is an error in the database or the stackexchange XML dumps.
-    return "question%i.html#%i" % (int(row["ParentId"]),row["Id"])
+    return "../question/%i.html#%i" % (int(row["ParentId"]),row["Id"])
 
 def internal_url_for_comment(cursor,comment_id):
     cursor.execute("select Id,ParentId,PostTypeId from Posts where Id=(select PostId from Comments where Id=?)",(comment_id,))
@@ -24,21 +24,21 @@ def internal_url_for_comment(cursor,comment_id):
     if not row:
         return None
     if row["PostTypeId"]=="1":
-        return "question%i.html" % (row["Id"],)
+        return "../question/%i.html" % (row["Id"],)
     elif row["PostTypeId"]=="2":
-        return "question%i.html#%i" % (int(row["ParentId"]),row["Id"])
+        return "../question/%i.html#%i" % (int(row["ParentId"]),row["Id"])
     elif row["PostTypeId"]=="4":
         cursor.execute("select Id from Tags where ExcerptPostId=?",(row["Id"],))
         row2=cursor.fetchone()
         if not row2:
             return None
-        return "tag%i.html" % (row2["Id"],)
+        return "../tag/%i.html" % (row2["Id"],)
     elif row["PostTypeId"]=="5":
         cursor.execute("select Id from Tags where WikiPostId=?",(row["Id"],))
         row2=cursor.fetchone()
         if not row2:
             return None
-        return "tag%i.html" % (row2["Id"],)
+        return "../tag/%i.html" % (row2["Id"],)
     else:
         return None
 
@@ -47,14 +47,14 @@ def internal_url_for_tag_name(cursor,tag_name):
     row=cursor.fetchone()
     if not row:
         return None
-    return "tag%i.html" % (row["Id"],)
+    return "../tag/%i.html" % (row["Id"],)
 
 def internal_url_for_user(cursor,user_id):
     cursor.execute("select Id from Users where Id=?",(user_id,))
     row=cursor.fetchone()
     if not row:
         return None
-    return "user%i.html" % (row["Id"],)
+    return "../user/%i.html" % (row["Id"],)
 
 def safe_int(object,default=None):
     try:

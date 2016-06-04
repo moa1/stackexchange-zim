@@ -47,14 +47,14 @@ user_template=u"""<!DOCTYPE html>
   <head>
     <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
     <title>User {{DisplayName}}</title>
-    <link href="se.css" rel="stylesheet" type="text/css">
+    <link href="../se.css" rel="stylesheet" type="text/css">
   </head>
     <body>
 <div class="linkheader">
-{{#NextPage}}<a class="internallink" href="user{{Id}}.html">Next User</a>{{/NextPage}}
-{{#PrevPage}}<a class="internallink" href="user{{Id}}.html">Prev User</a>{{/PrevPage}}
-<a class="internallink" href="index_users.html">Users Index</a>
-<a class="internallink" href="../index.html">Home</a>
+{{#NextPage}}<a class="internallink" href="user/{{Id}}.html">Next User</a>{{/NextPage}}
+{{#PrevPage}}<a class="internallink" href="user/{{Id}}.html">Prev User</a>{{/PrevPage}}
+<a class="internallink" href="../index_users.html">Users Index</a>
+<a class="internallink" href="../../index.html">Home</a>
 User Id: {{Id}}
 </div>
 <div class=\"userinfo\">
@@ -75,27 +75,27 @@ User Id: {{Id}}
 </div>
 <h2>My {{#NumBadges}}{{Class1}}{{/NumBadges}} gold badges<a class="internallink" name="class1badges" href="#class1badges"><span style="float:right;">¶</span></a></h2>
 {{#badgesclass1}}
-<p><a class="internallink" href="badge{{Name}}.html"><span class="class1">{{Name}}</span></a> awarded on <span class="date">{{#RenderDate}}{{Date}} {{Time}}{{/RenderDate}}</span></p>
+<p><a class="internallink" href="../badge/{{Name}}.html"><span class="class1">{{Name}}</span></a> awarded on <span class="date">{{#RenderDate}}{{Date}} {{Time}}{{/RenderDate}}</span></p>
 {{/badgesclass1}}
 <h2>My {{#NumBadges}}{{Class2}}{{/NumBadges}} silver badges<a class="internallink" name="class2badges" href="#class2badges"><span style="float:right;">¶</span></a></h2>
 {{#badgesclass2}}
-<p><a class="internallink" href="badge{{Name}}.html"><span class="class2">{{Name}}</span></a> awarded on <span class="date">{{#RenderDate}}{{Date}} {{Time}}{{/RenderDate}}</span></p>
+<p><a class="internallink" href="../badge/{{Name}}.html"><span class="class2">{{Name}}</span></a> awarded on <span class="date">{{#RenderDate}}{{Date}} {{Time}}{{/RenderDate}}</span></p>
 {{/badgesclass2}}
 <h2>My {{#NumBadges}}{{Class3}}{{/NumBadges}} bronze badges<a class="internallink" name="class3badges" href="#class3badges"><span style="float:right;">¶</span></a></h2>
 {{#badgesclass3}}
-<p><a class="internallink" href="badge{{Name}}.html"><span class="class3">{{Name}}</span></a> awarded on <span class="date">{{#RenderDate}}{{Date}} {{Time}}{{/RenderDate}}</span></p>
+<p><a class="internallink" href="../badge/{{Name}}.html"><span class="class3">{{Name}}</span></a> awarded on <span class="date">{{#RenderDate}}{{Date}} {{Time}}{{/RenderDate}}</span></p>
 {{/badgesclass3}}
 <h2>My {{questions_count}} questions<a class="internallink" name="questions" href="#questions"><span style="float:right;">¶</span></a></h2>
 {{#questions}}
-<p><a class="internallink" href="question{{Id}}.html">{{Title}}</a></p>
+<p><a class="internallink" href="../question/{{Id}}.html">{{Title}}</a></p>
 {{/questions}}
 <h2>My {{answers_count}} answers<a class="internallink" name="answers" href="#answers"><span style="float:right;">¶</span></a></h2>
 {{#answers}}
-<p><a class="internallink" href="question{{QuestionId}}.html#{{Id}}">{{QuestionTitle}}</a></p>
+<p><a class="internallink" href="../question/{{QuestionId}}.html#{{Id}}">{{QuestionTitle}}</a></p>
 {{/answers}}
 <h2>My {{tags_count}} tags<a class="internallink" name="tags" href="#tags"><span style="float:right;">¶</span></a></h2>
 {{#tags}}
-<p><a class="internallink" href="tag{{Id}}.html">{{TagName}}</a></p>
+<p><a class="internallink" href="../tag/{{Id}}.html">{{TagName}}</a></p>
 {{/tags}}
   </body>
 </html>"""
@@ -119,7 +119,7 @@ def make_users_html(only_ids=None):
         user_home=select_user_home(cursor, user_id, prev_user_id, next_user_id)
         print "User",user_home["Id"],"/",max_user_id
 
-        with codecs.open(file_path+"user"+str(user_home["Id"])+".html", "w", "utf-8") as f:
+        with codecs.open(file_path+"user/"+str(user_home["Id"])+".html", "w", "utf-8") as f:
             f.write(render_user_home(user_home,renderer))
 
 (connection,cursor)=init_db()

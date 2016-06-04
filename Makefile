@@ -31,6 +31,10 @@ temp/content/index.html:
 content: temp/finished-content
 temp/finished-content: temp/finished-database temp/content/index.html
 	mkdir -p "temp/content/$(stackexchange_domain)"
+	mkdir -p "temp/content/$(stackexchange_domain)/tag"
+	mkdir -p "temp/content/$(stackexchange_domain)/question"
+	mkdir -p "temp/content/$(stackexchange_domain)/user"
+	mkdir -p "temp/content/$(stackexchange_domain)/badge"
 	ln -f -s ../../../favicon.png temp/content/$(stackexchange_domain)/
 	ln -f -s ../../../se.css temp/content/$(stackexchange_domain)/
 	python indices.py
