@@ -20,7 +20,7 @@ def select_tag(cursor,Id):
     else:
         tag["WikiPost"]=None
 
-    cursor.execute('select * from Posts where Id in (select PostId from PostsTags where TagId=?) order by (0+Score) desc', (Id,))
+    cursor.execute('select Id,Title from Posts where Id in (select PostId from PostsTags where TagId=?) order by (0+Score) desc', (Id,))
     tag["questions"]=cursor.fetchall()
 
     return tag
@@ -33,11 +33,13 @@ def render_tag(cursor,Id,renderer,PrevId,NextId):
     tag["NextPage"]=select_tag(cursor,NextId)
     return renderer.render("{{>tag_html}}",tag)
 
-def make_tags_html():
+def make_tags_html(only_ids=[]):
     renderer=templates.make_renderer(templates.templates)
 
     cursor.execute('select Id from Tags')
     tag_ids = [row["Id"] for row in cursor]
+    if only_ids:
+        tag_ids=only_ids
     max_tag_id=max(tag_ids)
     len_tag_ids=len(tag_ids)
     for (i,tag_id) in enumerate(tag_ids):

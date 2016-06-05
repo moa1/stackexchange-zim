@@ -105,6 +105,9 @@ def select_comments_for_post(cursor,PostId):
 def select_post(cursor,Id):
     cursor.execute('select * from Posts where Id=?', (Id,))
     post=cursor.fetchone()
+
+    if not post:
+        return None
     
     post["Body"]=rewriteurl.rewrite_urls_in_html(cursor,post["Body"],stackexchange_domain)
     post["OwnerUser"]=select_user(cursor,post["OwnerUserId"])
