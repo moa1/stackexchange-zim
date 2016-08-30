@@ -1,6 +1,9 @@
 #!/usr/bin/python
 # -*- coding:utf-8 -*-
 
+# TODO: FIXME: "$HOME/stackexchange-zim/temp/content/stackoverflow.com/tag/52.html" is rendered incorrectly (lot of headlines at the bottom of the page), because there is a "<h1>" in a title of a question.
+# TODO: FIXME: "$HOME/stackexchange-zim/temp/content/stackoverflow.com/question/85.html" seems to suffer from a similar problem -- see the answers at the bottom of the page, they are all grey.
+
 # templates are in mustache format
 templates={
     "date":\
@@ -92,7 +95,7 @@ u"""<!DOCTYPE html>
 <html>
   <head>
     <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
-    <title>{{TagName}}</title>
+    <title>Tag {{TagName}}</title>
     <link href="../se.css" rel="stylesheet" type="text/css">
   </head>
   <body>
@@ -114,6 +117,7 @@ Tag Id: {{Id}}
 {{#questions}}
 <p><a class="internallink" href="../question/{{Id}}.html">{{Title}}</a></p>
 {{/questions}}
+<p>({{number_questions}} more questions with tag {{>tag}})</p>
   </body>
 </html>
 """
@@ -155,7 +159,7 @@ def _parse_template(fsplit,template_name):
         head=fsplit[0]
         if type(head)==unicode or type(head)==str:
             def make_render_string(head,template_name):
-                def render_string(funs,data,debug=[]):
+                def render_string(funs,data,debug):
                     return head
                 return render_string
             if head!="":
@@ -177,7 +181,7 @@ def _parse_template(fsplit,template_name):
             #    print fsplit[1:end_index]
             inner_fun=_parse_template(fsplit[1:end_index],template_name)
             def make_render_section(name,inner_fun,template_name):
-                def render_section(funs,data,debug=[]):
+                def render_section(funs,data,debug):
                     try:
                         var=data[name]
                     except KeyError:
@@ -190,7 +194,7 @@ def _parse_template(fsplit,template_name):
                             er=inner_fun(funs,e,debug+["#"+name+"["+str(i)+"]"] if debug else debug)
                             ret.append(er)
                         return "".join(ret)
-                    elif type(var)==dict:
+                    elif type(var)==dict or str(type(var))=="<type 'pysqlite2.dbapi2.Row'>": #TODO: FIXME: hack to be able to use pysqlite2.dbapi2.Row like dict. I should instead check for the availability of the .keys()-method in `var`.
                         return inner_fun(funs,var,debug+["#"+name+"[]"] if debug else debug)
                     else:
                         if var:
@@ -199,7 +203,7 @@ def _parse_template(fsplit,template_name):
                             return ""
                 return render_section
             def make_render_inverted(name,inner_fun,template_name):
-                def render_inverted(funs,data,debug=[]):
+                def render_inverted(funs,data,debug):
                     try:
                         var=data[name]
                     except KeyError:
@@ -211,13 +215,15 @@ def _parse_template(fsplit,template_name):
                 return render_inverted
             if head.mode=="#":
                 inst.append(make_render_section(name,inner_fun,template_name))
-            else:
+            elif head.mode=="^":
                 inst.append(make_render_inverted(name,inner_fun,template_name))
+            else:
+                assert(False)
             fsplit=fsplit[end_index+1:]
         elif head.mode==">": #partial
             name=str(head.name)
             def make_render_partial(name,template_name):
-                def render_partial(funs,data,debug=[]):
+                def render_partial(funs,data,debug):
                     if name not in funs:
                         raise Exception("Cannot render template '%s' (path %s): partial '%s' not found in '%s'" % (str(template_name),", ".join(['{{'+d+'}}' for d in debug]),name,funs.keys()))
                     return funs[name](funs,data,debug+[">"+name] if debug else debug)
@@ -227,8 +233,10 @@ def _parse_template(fsplit,template_name):
         elif head.mode in ("","{"): #normal variable and non-escaped variable
             #note that mustache by default html-escapes all variables, but we don't.
             name=head.name
+            if type(name)==unicode: #TODO: FIXME: hack to be able to use pysqlite2.dbapi2.Row, which only accepts strings as keys
+                name=str(name)
             def make_render_variable(name,template_name):
-                def render_variable(funs,data,debug=[]):
+                def render_variable(funs,data,debug):
                     try:
                         var=data[name]
                     except KeyError:
@@ -240,8 +248,8 @@ def _parse_template(fsplit,template_name):
         else:
             raise Exception("invalid mode",head.mode)
     def make_render_combination(inst,template_name):
-        def render_combination(funs,data,debug=[]):
-            #print "inst(",template_name,")",inst
+        #print "inst(",template_name,")",inst
+        def render_combination(funs,data,debug):
             return "".join([i(funs,data,debug) for i in inst])
         return render_combination
     return make_render_combination(inst,template_name)
