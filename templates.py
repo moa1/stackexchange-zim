@@ -1,9 +1,6 @@
 #!/usr/bin/python
 # -*- coding:utf-8 -*-
 
-# TODO: FIXME: "$HOME/stackexchange-zim/temp/content/stackoverflow.com/tag/52.html" is rendered incorrectly (lot of headlines at the bottom of the page), because there is a "<h1>" in a title of a question.
-# TODO: FIXME: "$HOME/stackexchange-zim/temp/content/stackoverflow.com/question/85.html" seems to suffer from a similar problem -- see the answers at the bottom of the page, they are all grey.
-
 # templates are in mustache format
 templates={
     "date":\
@@ -152,6 +149,14 @@ def strip_html(html):
     assert state==CLOSED
     return "".join(new)
 
+def escape_html(html):
+    """Return html that has "&", "<", and ">" escaped.
+TODO: search for and import a html-escaping function from a built-in Python module."""
+    html = html.replace("&", "&amp;")
+    html = html.replace("<", "&lt;")
+    html = html.replace(">", "&gt;")
+    return html
+
 # Own Renderer, like pystache but faster
 def _parse_template(fsplit,template_name):
     inst=[]
@@ -165,7 +170,7 @@ def _parse_template(fsplit,template_name):
             if head!="":
                 inst.append(make_render_string(head,template_name))
             fsplit=fsplit[1:]
-        elif head.mode=="#" or head.mode=="^": #section and inverted section
+        elif head.mode in ("#","^"): #section and inverted section
             name=head.name
             # search for closing tag
             end_index=-1
@@ -186,6 +191,12 @@ def _parse_template(fsplit,template_name):
                         var=data[name]
                     except KeyError:
                         raise Exception("Cannot render template '%s' (path %s): variable '%s' not found in '%s'" % (str(template_name),", ".join(['{{'+d+'}}' for d in debug]),name,data.keys()))
+                    try:
+                        # this is a small hack to be able to use pysqlite2.dbapi2.Row like a dict. It provides the .keys()-method.
+                        var.keys()
+                        dict_like=True
+                    except:
+                        dict_like=False
                     if type(var)==list:
                         #print "list(",name,"):",var
                         #print "inner_fun",inner_fun
@@ -194,7 +205,7 @@ def _parse_template(fsplit,template_name):
                             er=inner_fun(funs,e,debug+["#"+name+"["+str(i)+"]"] if debug else debug)
                             ret.append(er)
                         return "".join(ret)
-                    elif type(var)==dict or str(type(var))=="<type 'pysqlite2.dbapi2.Row'>": #TODO: FIXME: hack to be able to use pysqlite2.dbapi2.Row like dict. I should instead check for the availability of the .keys()-method in `var`.
+                    elif type(var)==dict or dict_like: 
                         return inner_fun(funs,var,debug+["#"+name+"[]"] if debug else debug)
                     else:
                         if var:
@@ -231,19 +242,29 @@ def _parse_template(fsplit,template_name):
             inst.append(make_render_partial(name,template_name))
             fsplit=fsplit[1:]
         elif head.mode in ("","{"): #normal variable and non-escaped variable
-            #note that mustache by default html-escapes all variables, but we don't.
             name=head.name
             if type(name)==unicode: #TODO: FIXME: hack to be able to use pysqlite2.dbapi2.Row, which only accepts strings as keys
                 name=str(name)
-            def make_render_variable(name,template_name):
-                def render_variable(funs,data,debug):
+            def make_render_variable(name,template_name,escaped):
+                def render_variable_escaped(funs,data,debug):
+                    try:
+                        var=data[name]
+                    except KeyError:
+                        raise Exception("Cannot render template '%s' (path %s): variable '%s' not found in '%s'" % (str(template_name),", ".join(['{{'+d+'}}' for d in debug]),name,data.keys()))
+                    return escape_html(unicode(var))
+                def render_variable_unescaped(funs,data,debug):
                     try:
                         var=data[name]
                     except KeyError:
                         raise Exception("Cannot render template '%s' (path %s): variable '%s' not found in '%s'" % (str(template_name),", ".join(['{{'+d+'}}' for d in debug]),name,data.keys()))
                     return unicode(var)
-                return render_variable
-            inst.append(make_render_variable(name,template_name))
+                if escaped:
+                    return render_variable_escaped
+                else:
+                    return render_variable_unescaped
+            #mustache by default html-escapes all variables, and we do as well.
+            escaped=head.mode==""
+            inst.append(make_render_variable(name,template_name,escaped))
             fsplit=fsplit[1:]
         else:
             raise Exception("invalid mode",head.mode)
@@ -272,6 +293,10 @@ class template_var:
             assert var.endswith("}}")
             self.mode=">"
             self.name=var[3:-2]
+        # an unescaped list/dict section doesn't make sense: "{{{#"
+        # an unescaped inverted section doesn't make sense: "{{{^"
+        # an unescaped closing tag doesn't make sense: "{{{/"
+        # an unescaped partial-section doesn't make sense: "{{{>"
         elif var.startswith("{{{"):
             assert var.endswith("}}}")
             self.mode="{"

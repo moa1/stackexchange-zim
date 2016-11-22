@@ -74,7 +74,6 @@ def internal_url_for_stackexchange_url(cursor,url,stackexchange_domain):
         return None
     if l[0]!=stackexchange_domain and l[0]!="": #only accept urls with the given stackexchange_domain or local references
         return None
-#    print Id,ParentId,url
     if len(l)<=1:
         return None
     elif l[1] in ("q","questions"):
@@ -85,6 +84,14 @@ def internal_url_for_stackexchange_url(cursor,url,stackexchange_domain):
                 return None
             tag_name=l[3]
             return internal_url_for_tag_name(cursor,tag_name)
+        if len(l)>3:
+            answer_id=l[3].split("#")
+            if len(answer_id)>1:
+                answer_id=safe_int(answer_id[1])
+                if answer_id:
+                    answer_id=internal_url_for_answer(cursor,answer_id)
+                    if answer_id:
+                        return answer_id
         question_id=safe_int(l[2])
         if not question_id:
             return None
@@ -180,10 +187,13 @@ def rewrite_urls_in_text(cursor,text,stackexchange_domain):
             newtext+=text[start:pos+1]
             start=pos+1
             continue
-        for i in range(end,len(text)):
+        for i in range(end,len(text)+1):
+            if i==len(text):
+                end=len(text)
+                break
             ch=text[i]
             # this is a hack but should work on stackoverflow domains.
-            if "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789-_./".find(ch)==-1:
+            if "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789-_./#".find(ch)==-1:
                 end=i
                 break
         href=text[pos:end]
@@ -207,7 +217,7 @@ if __name__=="__main__":
     with connection:
         cursor=connection.cursor()
         cursor.execute("select Id,PostId as ParentId,Text as Body from Comments")
-        #cursor.execute("select Id,PostId as ParentId,Text as Body from Comments where Id in (54035,42,3089)")
+        #cursor.execute("select Id,PostId as ParentId,Text as Body from Comments where Id in (9873997,17891)")
         #cursor.execute("select Id,ParentId,Body from Posts")
         #cursor.execute('select Id,ParentId,Body from Posts where Id=527')
         rows=cursor.fetchall()

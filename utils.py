@@ -5,10 +5,15 @@ from pysqlite2 import dbapi2 as sqlite3
 import rewriteurl
 import math
 from config import *
+import datetime
+from templates import escape_html
 
 dbfile=tempdir+"/"+stackexchange_domain+".sqlite3"
 file_path=tempdir+"/content/"+stackexchange_domain+"/"
 
+
+def tuple_factory(cursor, row):
+    return row
 
 def dict_factory(cursor, row):
     d = {}
@@ -94,6 +99,7 @@ def select_comments_for_post(cursor,PostId):
     comments=cursor.fetchall()
     for comment in comments:
         comment["User"]=select_user(cursor,comment["UserId"])
+        comment["Text"]=escape_html(comment["Text"]) #escape before rewriting, and export un-escaped, so that "<" and "&" are escaped, but links are clickable
         comment["Text"]=rewriteurl.rewrite_urls_in_text(cursor,comment["Text"],stackexchange_domain)
         if comment["User"] and comment["CreationDate"]:
             comment["User"]["RenderDate"]=make_Date(comment["CreationDate"])
@@ -122,3 +128,10 @@ def select_post(cursor,Id):
     post["comments"]=select_comments_for_post(cursor,Id)
 
     return post
+
+def estimated_time_arrival(start,i,total):
+    """Return a datetime.datetime that is the estimated time of arrival, when processing started at `start`, and `i` out of `total` items have been processed."""
+    if i<=0:
+        return "NA"
+    else:
+        return start+datetime.timedelta(0,(datetime.datetime.now()-start).total_seconds()/i*total)

@@ -5,9 +5,28 @@ from utils import *
 import codecs
 import templates
 
-def select_tag(cursor,Id):
+"""
+Tags
+Tag 1 / 118310
+2016-08-16 15:43:28.911488 select_tag(cursor,Id)
+2016-08-16 15:43:30.144048 select questions
+2016-08-16 15:51:49.647039 select number_questions
+2016-08-16 15:59:28.883504 select questions
+2016-08-16 15:59:28.968285 select number_questions
+2016-08-16 15:59:35.162972 select questions
+2016-08-16 16:09:44.278063 select number_questions
+2016-08-16 16:20:34.990333 rendering
+Tag 2 / 118310
+2016-08-16 16:20:35.150056 select_tag(cursor,Id)
+2016-08-16 16:20:41.927126 select questions
+2016-08-16 16:29:44.415969 select number_questions
+"""
+
+def select_tag(cursor,Id,overview_only=False):
     cursor.execute('select * from Tags where Id=?', (Id,))
     tag=cursor.fetchone()
+    if overview_only:
+        return tag
 
     excerpt_post_id=tag["ExcerptPostId"]
     if excerpt_post_id:
@@ -20,30 +39,40 @@ def select_tag(cursor,Id):
     else:
         tag["WikiPost"]=None
 
-    cursor.execute('select Id,Title from Posts where Id in (select PostId from PostsTags where TagId=?) order by (0+Score) desc', (Id,))
+    #print str(datetime.datetime.now()), "select questions"
+    cursor.execute('select Id,Title from Posts where Id in (select PostId from PostsTags where TagId=?) order by (0+Score) desc limit 1000', (Id,))
     tag["questions"]=cursor.fetchall()
+
+    #print str(datetime.datetime.now()), "select number_questions"
+    cursor.execute('select max(0,count(*)-1000) as NumberMoreQuestions from PostsTags where TagId=?', (Id,))
+    tag["number_questions"]=cursor.fetchone()["NumberMoreQuestions"]
 
     return tag
 
-
 def render_tag(cursor,Id,renderer,PrevId,NextId):
+    #print str(datetime.datetime.now()), "select_tag(cursor,Id)"
     tag=select_tag(cursor,Id)
     # doing the next two queries in `select_question` would recurse forever.
-    tag["PrevPage"]=select_tag(cursor,PrevId)
-    tag["NextPage"]=select_tag(cursor,NextId)
+    tag["PrevPage"]=select_tag(cursor,PrevId,True)
+    tag["NextPage"]=select_tag(cursor,NextId,True)
+    #print str(datetime.datetime.now()), "rendering"
     return renderer.render("{{>tag_html}}",tag)
 
 def make_tags_html(only_ids=[]):
     renderer=templates.make_renderer(templates.templates)
 
-    cursor.execute('select Id from Tags')
-    tag_ids = [row["Id"] for row in cursor]
     if only_ids:
         tag_ids=only_ids
+    else:
+        cursor.row_factory = sqlite3.Row #saves memory compared to =dict_factory
+        cursor.execute('select Id from Tags')
+        tag_ids = [row["Id"] for row in cursor]
+        cursor.row_factory = dict_factory
     max_tag_id=max(tag_ids)
     len_tag_ids=len(tag_ids)
+    start=datetime.datetime.now()
     for (i,tag_id) in enumerate(tag_ids):
-        print "Tag",tag_id,"/",max_tag_id
+        print "Tag",tag_id,"/",max_tag_id,"at",str(datetime.datetime.now()),"ETA:",estimated_time_arrival(start,i,len_tag_ids)
 
         with codecs.open(file_path+"tag/"+str(tag_id)+".html", "w", "utf-8") as f:
             prev_tag_id=tag_ids[(i-1)%len_tag_ids]
@@ -54,7 +83,7 @@ def make_tags_html(only_ids=[]):
 (connection,cursor)=init_db()
 
 with connection:
-    print "Tags"
+    print "Tags","at",str(datetime.datetime.now())
     #import profile
     #profile.run("make_tags_html()",sort="tottime")
     make_tags_html()

@@ -2,16 +2,15 @@
 # -*- coding: utf-8 -*-"
 
 import os
-import lxml
+import parsexml
 from pysqlite2 import dbapi2 as sqlite3
 from utils import *
 import sys
 import codecs
 
 def fill_table(file, tables, table_attributes, connection):
-    parser = lxml.etree.XMLPullParser(events=('start', 'end'),encoding="UTF-8")
-    events = parser.read_events()
-
+    parser=parsexml.XMLParser()
+    
     statement=dict()
     for table in tables.values():
         attributes=table_attributes[table]
@@ -31,39 +30,37 @@ def fill_table(file, tables, table_attributes, connection):
         print "fill %s.xml %i" % (table,buf_pos)
         if buf=="":
             break
-        parser.feed(buf)
-        for action, elem in events:
+
+        events=parser.parse(buf)
+        for (action,tag,attributes) in events:
             if action=="start":
-                if elem.tag in tables.keys():
-                    table=tables[elem.tag]
+                if tag in tables.keys():
+                    table=tables[tag]
                     print statement[table]
                     skip=False
-                elif elem.tag=="row":
+                elif tag=="row":
                     pass
                 else:
                     table=None
                     skip=True
             elif action=="end":
-                if elem.tag=="row" and not skip:
+                if tag=="row" and not skip:
                     row={}
                     for a in table_attributes[table]:
                         row[a]=None
-                    for name, value in elem.items():
+                    for name, value in attributes.items():
                         row[name]=value
                     row["Id"]=int(row["Id"])
                     #print row
                     connection.execute(statement[table], row)
                     #print "Insert",table,row["Id"]
-                elem.clear()
-
-    root = parser.close()
-    #print etree.tostring(root)
-
+                    
 if __name__=="__main__":
     if len(sys.argv)!=1:
         print "Syntax: cat DUMP-FILE-TO-CREATE-TABLES-FOR.XML | ",sys.argv[0]
         sys.exit(1)
 
+    print "connecting to database",dbfile
     connection = sqlite3.connect(dbfile)
 
     table_attributes=get_table_attributes(connection)

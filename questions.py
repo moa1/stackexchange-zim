@@ -2,6 +2,64 @@
 
 # TODO: make that external image alternative texts are shown in a different color, maybe with a link to the external image.
 
+"""
+Question 7511789 / 35823053 at 2016-09-10 02:54:33.993394 ETA: 2016-09-29 17:33:47.519406
+Traceback (most recent call last):
+  File "./questions.py", line 130, in <module>
+    make_questions_html()
+  File "./questions.py", line 122, in make_questions_html
+    f.write(render_question(cursor, post_id, renderer, prev_post_id, next_post_id))
+  File "./questions.py", line 100, in render_question
+    question["NextPage"]=select_question(cursor,NextId)
+  File "./questions.py", line 85, in select_question
+    question=select_post(cursor,Id)
+  File "/home/rtoni/stackexchange-zim/utils.py", line 118, in select_post
+    post["Body"]=rewriteurl.rewrite_urls_in_html(cursor,post["Body"],stackexchange_domain)
+  File "/home/rtoni/stackexchange-zim/rewriteurl.py", line 168, in rewrite_urls_in_html
+    assert newhtml.startswith("<html><body>") and newhtml.endswith("</body></html>")
+AssertionError
+"""
+
+"""
+with stackoverflow.com.squashfs compressed using "mksquashfs ./stackoverflow.com.sqlite3 ./stackoverflow.com.sqlite3.squashfs -comp xz -root-owned" and mounted:
+CPU usage is at around 5%, and Disk reads at around <1 MB/s.
+rtoni@debian:~/stackexchange-zim$ ./questions.py 
+Questions at 2016-08-30 16:16:33.413784
+Question 4 / 35823053 at 2016-08-30 16:29:14.114718
+Question 6 / 35823053 at 2016-08-30 16:29:59.805194
+Question 9 / 35823053 at 2016-08-30 16:31:36.229862
+Question 11 / 35823053 at 2016-08-30 16:32:46.323628
+Question 13 / 35823053 at 2016-08-30 16:33:24.535859
+Question 14 / 35823053 at 2016-08-30 16:33:41.309147
+Question 16 / 35823053 at 2016-08-30 16:33:46.220353
+Question 17 / 35823053 at 2016-08-30 16:33:55.408994
+
+with stackoverflow.com.squashfs compressed using "mksquashfs ./stackoverflow.com.sqlite3 ./stackoverflow.com.sqlite3.squashfs -comp xz -root-owned" and mounted:
+CPU usage is at around 70%, and Disk reads at around 7 MB/s.
+rtoni@debian:~/stackexchange-zim$ ./questions.py 
+Questions
+Question 4 / 35823053 at 2016-08-30 15:40:48.185610
+Question 6 / 35823053 at 2016-08-30 15:43:08.604310
+Question 9 / 35823053 at 2016-08-30 15:48:25.446965
+Question 11 / 35823053 at 2016-08-30 15:55:26.272059
+Question 13 / 35823053 at 2016-08-30 16:03:24.333881
+Question 14 / 35823053 at 2016-08-30 16:09:37.595338
+Question 16 / 35823053 at 2016-08-30 16:12:25.249392
+Question 17 / 35823053 at 2016-08-30 16:14:43.609224
+
+with stackoverflow.com.squashfs compressed using "mksquashfs ./stackoverflow.com.sqlite3 ./stackoverflow.com.sqlite3.squashfs-compgzip-b4096 -comp gzip -root-owned -b 4096" and mounted:
+CPU usage is at around 10%, and Disk reads at around 2 MB/s.
+Questions at 2016-08-30 19:35:17.218871
+Question 4 / 35823053 at 2016-08-30 20:01:36.537141
+Question 6 / 35823053 at 2016-08-30 20:02:08.279820
+Question 9 / 35823053 at 2016-08-30 20:03:22.721451
+Question 11 / 35823053 at 2016-08-30 20:04:20.140414
+Question 13 / 35823053 at 2016-08-30 20:04:54.341013
+Question 14 / 35823053 at 2016-08-30 20:05:06.851642
+Question 16 / 35823053 at 2016-08-30 20:05:10.724873
+Question 17 / 35823053 at 2016-08-30 20:05:19.007552
+"""
+
 from utils import *
 import codecs
 import templates
@@ -62,25 +120,38 @@ def render_question(cursor, Id, renderer, PrevId, NextId):
 
 def make_questions_html(only_ids=None):
     renderer=templates.make_renderer(templates.templates)
-    
-    cursor.execute('select Id from Posts where PostTypeId="1"')
-    post_ids = [row["Id"] for row in cursor]
+
     if only_ids:
         post_ids=only_ids
+    else:
+        cursor.row_factory = sqlite3.Row #saves memory compared to =dict_factory
+        cursor.execute('select Id from Posts where PostTypeId="1"')
+        post_ids = [row["Id"] for row in cursor]
+        cursor.row_factory = dict_factory
     max_Id=max(post_ids)
     len_post_ids=len(post_ids)
+    start=datetime.datetime.now()
     for (i,post_id) in enumerate(post_ids):
-        print "Question",post_id,"/",max_Id
+        print "Question",post_id,"/",max_Id,"at",str(datetime.datetime.now()),"ETA:",estimated_time_arrival(start,i,len_post_ids)
 
         with codecs.open(file_path+"question/"+str(post_id)+".html", "w", "utf-8") as f:
             prev_post_id=post_ids[(i-1)%len_post_ids]
             next_post_id=post_ids[(i+1)%len_post_ids]
-            f.write(render_question(cursor, post_id, renderer, prev_post_id, next_post_id))
+            html=None
+            try:
+                html=render_question(cursor, post_id, renderer, prev_post_id, next_post_id)
+            except:
+                print "Error rendering",post_id
+                bugf=open("buggy-database-entries.txt", "a")
+                bugf.write("domain: %s post_id: %i\n" % (stackexchange_domain,post_id))
+                bugf.close()
+            if html: f.write(html)
 
 (connection,cursor)=init_db()
 
 with connection:
-    print "Questions"
+    print "Questions","at",str(datetime.datetime.now())
     #import profile
     #profile.run("make_questions_html()",sort="tottime")
+    #make_questions_html([7511791]) #spurious </html> in database.
     make_questions_html()
