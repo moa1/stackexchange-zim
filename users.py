@@ -3,20 +3,22 @@
 
 from utils import *
 import codecs
+import os
 import rewriteurl
 import templates
 
-def select_user_home(cursor, Id, PrevUserId, NextUserId, PostLimit=1000):
-    user=select_user(cursor, Id)
-    user["PrevPage"]={"Id":PrevUserId}
-    user["NextPage"]={"Id":NextUserId}
+def select_user_home(cursor, Id, PrevUserId, NextUserId, rootdir, PostLimit=1000):
+    user=select_user(cursor, Id, rootdir)
+    user["PrevPage"]={"IdPath":convert_user_id_to_idpath(PrevUserId,rootdir)}
+    user["NextPage"]={"IdPath":convert_user_id_to_idpath(NextUserId,rootdir)}
     if user["AboutMe"]:
-        user["AboutMe"]=rewriteurl.rewrite_urls_in_html(cursor,user["AboutMe"],stackexchange_domain)
+        user["AboutMe"]=rewriteurl.rewrite_urls_in_html(cursor,user["AboutMe"],stackexchange_domain,rootdir)
     def get_badges(badgeclass):
         cursor.execute('select * from Badges where UserId=? and Class=? order by Name,Date desc', (Id,badgeclass))
         res=cursor.fetchall()
         for badge in res:
             badge["RenderDate"]=make_Date(badge["Date"])
+            badge["RootDir"]=rootdir
         return res
     user["badgesclass1"]=get_badges("1")
     user["badgesclass2"]=get_badges("2")
@@ -25,6 +27,8 @@ def select_user_home(cursor, Id, PrevUserId, NextUserId, PostLimit=1000):
     cursor.execute('select * from Posts where OwnerUserId=? and PostTypeId="1" order by (0+Score) desc limit ?', (Id,PostLimit))
     user["questions"]=cursor.fetchall()
     user["questions_count"]=len(user["questions"])
+    for question in user["questions"]:
+        question["IdPath"]=convert_question_id_to_idpath(question["Id"],rootdir)
     
     cursor.execute('select Id,ParentId from Posts where OwnerUserId=? and PostTypeId="2" order by (0+Score) desc limit ?', (Id,PostLimit))
     user["answers"]=cursor.fetchall()
@@ -34,11 +38,16 @@ def select_user_home(cursor, Id, PrevUserId, NextUserId, PostLimit=1000):
         question=cursor.fetchone()
         row["QuestionId"]=question["Id"]
         row["QuestionTitle"]=question["Title"]
+        row["QuestionIdPath"]=convert_question_id_to_idpath(question["Id"],rootdir)
 
     cursor.execute('select distinct (select Id from Tags where ExcerptPostId=Posts.Id or WikiPostId=Posts.Id) as Id, (select TagName from Tags where ExcerptPostId=Posts.Id or WikiPostId=Posts.Id) as TagName from Posts where OwnerUserId=? and PostTypeId in ("4","5") and TagName not NULL limit 1000', (Id,))
     user["tags"]=cursor.fetchall()
     user["tags"].sort(key=lambda x:x["TagName"])
     user["tags_count"]=len(user["tags"])
+    for tag in user["tags"]:
+        tag["RootDir"]=rootdir
+
+    user["RootDir"]=rootdir
 
     return user
 
@@ -47,14 +56,14 @@ user_template=u"""<!DOCTYPE html>
   <head>
     <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
     <title>User {{DisplayName}}</title>
-    <link href="../se.css" rel="stylesheet" type="text/css">
+    <link href="{{RootDir}}se.css" rel="stylesheet" type="text/css">
   </head>
     <body>
 <div class="linkheader">
-{{#NextPage}}<a class="internallink" href="{{Id}}.html">Next User</a>{{/NextPage}}
-{{#PrevPage}}<a class="internallink" href="{{Id}}.html">Prev User</a>{{/PrevPage}}
-<a class="internallink" href="../index_users.html">Users Index</a>
-<a class="internallink" href="../../index.html">Home</a>
+{{#NextPage}}<a class="internallink" href="{{IdPath}}">Next User</a>{{/NextPage}}
+{{#PrevPage}}<a class="internallink" href="{{IdPath}}">Prev User</a>{{/PrevPage}}
+<a class="internallink" href="{{RootDir}}index_users.html">Users Index</a>
+<a class="internallink" href="{{RootDir}}../index.html">Home</a>
 User Id: {{Id}}
 </div>
 <div class=\"userinfo\">
@@ -75,27 +84,27 @@ User Id: {{Id}}
 </div>
 <h2>My {{#NumBadges}}{{Class1}}{{/NumBadges}} gold badges<a class="internallink" name="class1badges" href="#class1badges"><span style="float:right;">¶</span></a></h2>
 {{#badgesclass1}}
-<p><a class="internallink" href="../badge/{{Name}}.html"><span class="class1">{{Name}}</span></a> awarded on <span class="date">{{#RenderDate}}{{Date}} {{Time}}{{/RenderDate}}</span></p>
+<p><a class="internallink" href="{{RootDir}}badge/{{Name}}.html"><span class="class1">{{Name}}</span></a> awarded on <span class="date">{{#RenderDate}}{{Date}} {{Time}}{{/RenderDate}}</span></p>
 {{/badgesclass1}}
 <h2>My {{#NumBadges}}{{Class2}}{{/NumBadges}} silver badges<a class="internallink" name="class2badges" href="#class2badges"><span style="float:right;">¶</span></a></h2>
 {{#badgesclass2}}
-<p><a class="internallink" href="../badge/{{Name}}.html"><span class="class2">{{Name}}</span></a> awarded on <span class="date">{{#RenderDate}}{{Date}} {{Time}}{{/RenderDate}}</span></p>
+<p><a class="internallink" href="{{RootDir}}badge/{{Name}}.html"><span class="class2">{{Name}}</span></a> awarded on <span class="date">{{#RenderDate}}{{Date}} {{Time}}{{/RenderDate}}</span></p>
 {{/badgesclass2}}
 <h2>My {{#NumBadges}}{{Class3}}{{/NumBadges}} bronze badges<a class="internallink" name="class3badges" href="#class3badges"><span style="float:right;">¶</span></a></h2>
 {{#badgesclass3}}
-<p><a class="internallink" href="../badge/{{Name}}.html"><span class="class3">{{Name}}</span></a> awarded on <span class="date">{{#RenderDate}}{{Date}} {{Time}}{{/RenderDate}}</span></p>
+<p><a class="internallink" href="{{RootDir}}badge/{{Name}}.html"><span class="class3">{{Name}}</span></a> awarded on <span class="date">{{#RenderDate}}{{Date}} {{Time}}{{/RenderDate}}</span></p>
 {{/badgesclass3}}
 <h2>My {{questions_count}} questions<a class="internallink" name="questions" href="#questions"><span style="float:right;">¶</span></a></h2>
 {{#questions}}
-<p><a class="internallink" href="../question/{{Id}}.html">{{Title}}</a></p>
+<p><a class="internallink" href="{{IdPath}}">{{Title}}</a></p>
 {{/questions}}
 <h2>My {{answers_count}} answers<a class="internallink" name="answers" href="#answers"><span style="float:right;">¶</span></a></h2>
 {{#answers}}
-<p><a class="internallink" href="../question/{{QuestionId}}.html#{{Id}}">{{QuestionTitle}}</a></p>
+<p><a class="internallink" href="{{QuestionIdPath}}#{{Id}}">{{QuestionTitle}}</a></p>
 {{/answers}}
 <h2>My {{tags_count}} tags<a class="internallink" name="tags" href="#tags"><span style="float:right;">¶</span></a></h2>
 {{#tags}}
-<p><a class="internallink" href="../tag/{{Id}}.html">{{TagName}}</a></p>
+<p><a class="internallink" href="{{RootDir}}tag/{{Id}}.html">{{TagName}}</a></p>
 {{/tags}}
   </body>
 </html>"""
@@ -118,12 +127,17 @@ def make_users_html(only_ids=None):
     len_user_ids=len(user_ids)
     start=datetime.datetime.now()
     for (i,user_id) in enumerate(user_ids):
-        prev_user_id=user_ids[(i-1)%len_user_ids]
-        next_user_id=user_ids[(i+1)%len_user_ids]
-        user_home=select_user_home(cursor, user_id, prev_user_id, next_user_id)
-        print "User",user_home["Id"],"/",max_user_id,"at",str(datetime.datetime.now()),"ETA:",estimated_time_arrival(start,i,len_user_ids)
+        print "User",user_id,"/",max_user_id,"at",str(datetime.datetime.now()),"ETA:",estimated_time_arrival(start,i,len_user_ids)
 
-        with codecs.open(file_path+"user/"+str(user_home["Id"])+".html", "w", "utf-8") as f:
+        flat_path=file_path+"user/"+str(user_id)+".html"
+        (paths,basename,n_subdirs)=split_filename_into_subdirs(flat_path)
+        html_path=paths+basename
+        if not os.access(paths,os.W_OK):
+            os.makedirs(paths)
+        with codecs.open(html_path, "w", "utf-8") as f:
+            prev_user_id=user_ids[(i-1)%len_user_ids]
+            next_user_id=user_ids[(i+1)%len_user_ids]
+            user_home=select_user_home(cursor, user_id, prev_user_id, next_user_id, "../"*(n_subdirs+1))
             f.write(render_user_home(user_home,renderer))
 
 (connection,cursor)=init_db()

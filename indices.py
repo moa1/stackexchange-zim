@@ -62,6 +62,8 @@ renderer=templates.make_renderer(indices_templates)
 
 
 def write_index_html(cursor, select_entry, site_type, sites, file_mask, sub_index_size=1000):
+    cursor.row_factory = dict_factory # We have to modify the Link
+
     print "writing index for '%s': %i entries" % (site_type, len(sites))
     index_filename=file_mask % ("",)
     sub_indices=[]
@@ -81,12 +83,15 @@ def write_index_html(cursor, select_entry, site_type, sites, file_mask, sub_inde
         sub_sites = []
         for Id in sub_index["sub_ids"]:
             cursor.execute(select_entry, (Id["Id"],))
-            sub_sites.append(cursor.fetchone())
+            new_site=cursor.fetchone()
+            if site_type in ["Users","Users by Reputation","Questions by Score","Tags","Tags by Questions"]:
+                new_site["Link"]=convert_id_to_idpath(new_site["Link"])
+            sub_sites.append(new_site)
         sub_index["sub_sites"]=sub_sites
         sub_index["first"]=sub_sites[0]
         sub_index["last"]=sub_sites[-1]
         with codecs.open(file_path+sub_index["filename"], "w", "utf-8") as f:
-            f.write(renderer.render('{{>sites_sub_index_template}}',sub_index, ["hello"]))
+            f.write(renderer.render('{{>sites_sub_index_template}}',sub_index))
         # free memory
         sub_index["sub_sites"]=None
         # do not set sub_index["first"]=None, it is needed below
@@ -97,46 +102,46 @@ def write_index_html(cursor, select_entry, site_type, sites, file_mask, sub_inde
         f.write(renderer.render('{{>sites_index_template}}',{"site_type":site_type,"sites_count":len(sites),"sub_indices":sub_indices}))
     
 def write_badges_index_html(cursor):
+    cursor.row_factory = sqlite3.Row #saves memory compared to =dict_factory
     cursor.execute('select distinct Name as Id from Badges order by Name')
     users=cursor.fetchall()
     select_entry='select distinct Name as Id,Name as Title,"badge/"||Name||".html" as Link from Badges where Name=?'
-
     write_index_html(cursor, select_entry, "Badges",users,"index_badges%s.html")
 
 def write_users_index_html(cursor,connection):
+    cursor.row_factory = sqlite3.Row #saves memory compared to =dict_factory
     cursor.execute('select Id from Users order by DisplayName')
     users=cursor.fetchall()
     select_entry='select Id,DisplayName as Title,"user/"||Id||".html" as Link from Users where Id=?'
-
     write_index_html(cursor, select_entry, "Users",users,"index_users%s.html")
 
 def write_users_by_reputation_index_html(cursor):
+    cursor.row_factory = sqlite3.Row #saves memory compared to =dict_factory
     cursor.execute('select Id from Users order by (Reputation+0) desc')
     questions=cursor.fetchall()
     select_entry='select Id,Reputation||": "||DisplayName as Title,"user/"||Id||".html" as Link from Users where Id=?'
-
     write_index_html(cursor, select_entry, "Users by Reputation",questions,"index_users_by_reputation%s.html")
 
-def write_questions_index_html(cursor):
-    cursor.execute('select Id from Posts where PostTypeId="1" order by Title')
-    questions=cursor.fetchall()
-    select_entry='select Id,Title,"question/"||Id||".html" as Link from Posts where Id=?'
-
-    write_index_html(cursor, select_entry, "Questions",questions,"index_questions%s.html")
-
 def write_questions_by_score_index_html(cursor):
+    cursor.row_factory = sqlite3.Row #saves memory compared to =dict_factory
     cursor.execute('select Id from Posts where PostTypeId="1" order by (Score+0) desc')
     questions=cursor.fetchall()
     select_entry='select Id,Score||": "||Title as Title,"question/"||Id||".html" as Link from Posts where Id=?'
-
     write_index_html(cursor, select_entry, "Questions by Score",questions,"index_questions_by_score%s.html")
 
 def write_tags_index_html(cursor):
+    cursor.row_factory = sqlite3.Row #saves memory compared to =dict_factory
     cursor.execute('select Id from Tags order by TagName')
     tags=cursor.fetchall()
     select_entry='select Id,TagName as Title,"tag/"||Id||".html" as Link from Tags where Id=?'
-
     write_index_html(cursor, select_entry, "Tags",tags,"index_tags%s.html")
+
+def write_tags_by_questions_index_html(cursor):
+    cursor.row_factory = sqlite3.Row #saves memory compared to =dict_factory
+    cursor.execute('select Id from (select TagId as Id, count(*) as Count from PostsTags group by Id) order by Count desc;')
+    tags=cursor.fetchall()
+    select_entry='select Id,TagName||": "||(select count(*) from PostsTags where TagId=Tags.Id) as Title,"tag/"||Id||".html" as Link from Tags where Id=?;'
+    write_index_html(cursor, select_entry, "Tags by Questions",tags,"index_tags_by_questions%s.html")
 
 def write_main_index_html(cursor):
     template=u"""<html>
@@ -152,13 +157,14 @@ def write_main_index_html(cursor):
 <h1>Index</h1>
 <p><a class="internallink" href="index_users.html">Index of {{UsersCount}} users by name</a></p>
 <p><a class="internallink" href="index_users_by_reputation.html">Index of {{UsersCount}} users by reputation</a></p>
-<p><a class="internallink" href="index_questions.html">Index of {{QuestionsCount}} questions by title</a></p>
 <p><a class="internallink" href="index_questions_by_score.html">Index of {{QuestionsCount}} questions by score</a></p>
 <p><a class="internallink" href="index_tags.html">Index of {{TagsCount}} tags</a></p>
+<p><a class="internallink" href="index_tags_by_questions.html">Index of {{TagsCount}} tags by number of questions</a></p>
 <p><a class="internallink" href="index_badges.html">Index of {{BadgesCount}} badges</a></p>
   </body>
 </html>"""
 
+    cursor.row_factory = sqlite3.Row #saves memory compared to =dict_factory
     cursor.execute("""select
 (select count(*) from Users) as UsersCount,
 (select count(*) from Posts where PostTypeId="1") as QuestionsCount,
@@ -173,18 +179,16 @@ def write_main_index_html(cursor):
 (connection,cursor)=init_db()
 
 with connection:
-    cursor.row_factory = sqlite3.Row #saves memory compared to =dict_factory
     print "Tags Index"
     write_tags_index_html(cursor)
-    # TODO: add the index "tags by number of questions with that tag"
+    print "Tags by Questions Index"
+    write_tags_by_questions_index_html(cursor)
     print "Badges Index"
     write_badges_index_html(cursor)
     print "Users Index"
     write_users_index_html(cursor,connection)
     print "Users by Reputation Index"
     write_users_by_reputation_index_html(cursor)
-    print "Questions Index"
-    write_questions_index_html(cursor)
     print "Questions By Score Index"
     write_questions_by_score_index_html(cursor)
     print "Main Index"

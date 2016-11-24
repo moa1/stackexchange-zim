@@ -3,6 +3,7 @@
 
 from utils import *
 import codecs
+import os
 import templates
 
 """
@@ -22,26 +23,33 @@ Tag 2 / 118310
 2016-08-16 16:29:44.415969 select number_questions
 """
 
-def select_tag(cursor,Id,overview_only=False):
+def select_tag(cursor,Id,rootdir,overview_only=False):
     cursor.execute('select * from Tags where Id=?', (Id,))
     tag=cursor.fetchone()
+
+    tag["RootDir"]=rootdir
+    tag["IdPath"]=convert_tag_id_to_idpath(Id,rootdir)
+
     if overview_only:
         return tag
 
     excerpt_post_id=tag["ExcerptPostId"]
     if excerpt_post_id:
-        tag["ExcerptPost"]=select_post(cursor,int(excerpt_post_id))
+        tag["ExcerptPost"]=select_post(cursor,int(excerpt_post_id),rootdir)
     else:
         tag["ExcerptPost"]=None
     wiki_post_id=tag["WikiPostId"]
     if wiki_post_id:
-        tag["WikiPost"]=select_post(cursor,int(wiki_post_id))
+        tag["WikiPost"]=select_post(cursor,int(wiki_post_id),rootdir)
     else:
         tag["WikiPost"]=None
 
     #print str(datetime.datetime.now()), "select questions"
     cursor.execute('select Id,Title from Posts where Id in (select PostId from PostsTags where TagId=?) order by (0+Score) desc limit 1000', (Id,))
     tag["questions"]=cursor.fetchall()
+    for question in tag["questions"]:
+        question["RootDir"]=rootdir
+        question["IdPath"]=convert_question_id_to_idpath(question["Id"],rootdir)
 
     #print str(datetime.datetime.now()), "select number_questions"
     cursor.execute('select max(0,count(*)-1000) as NumberMoreQuestions from PostsTags where TagId=?', (Id,))
@@ -49,14 +57,14 @@ def select_tag(cursor,Id,overview_only=False):
 
     return tag
 
-def render_tag(cursor,Id,renderer,PrevId,NextId):
+def render_tag(cursor,Id,renderer,PrevId,NextId,rootdir):
     #print str(datetime.datetime.now()), "select_tag(cursor,Id)"
-    tag=select_tag(cursor,Id)
+    tag=select_tag(cursor,Id,rootdir)
     # doing the next two queries in `select_question` would recurse forever.
-    tag["PrevPage"]=select_tag(cursor,PrevId,True)
-    tag["NextPage"]=select_tag(cursor,NextId,True)
+    tag["PrevPage"]=select_tag(cursor,PrevId,rootdir,True)
+    tag["NextPage"]=select_tag(cursor,NextId,rootdir,True)
     #print str(datetime.datetime.now()), "rendering"
-    return renderer.render("{{>tag_html}}",tag)
+    return renderer.render("{{>tag_html}}",tag,True)
 
 def make_tags_html(only_ids=[]):
     renderer=templates.make_renderer(templates.templates)
@@ -74,10 +82,15 @@ def make_tags_html(only_ids=[]):
     for (i,tag_id) in enumerate(tag_ids):
         print "Tag",tag_id,"/",max_tag_id,"at",str(datetime.datetime.now()),"ETA:",estimated_time_arrival(start,i,len_tag_ids)
 
-        with codecs.open(file_path+"tag/"+str(tag_id)+".html", "w", "utf-8") as f:
+        flat_path=file_path+"tag/"+str(tag_id)+".html"
+        (paths,basename,n_subdirs)=split_filename_into_subdirs(flat_path)
+        html_path=paths+basename
+        if not os.access(paths,os.W_OK):
+            os.makedirs(paths)
+        with codecs.open(html_path, "w", "utf-8") as f:
             prev_tag_id=tag_ids[(i-1)%len_tag_ids]
             next_tag_id=tag_ids[(i+1)%len_tag_ids]
-            f.write(render_tag(cursor, tag_id, renderer, prev_tag_id, next_tag_id))
+            f.write(render_tag(cursor, tag_id, renderer, prev_tag_id, next_tag_id,"../"*(n_subdirs+1)))
 
 
 (connection,cursor)=init_db()

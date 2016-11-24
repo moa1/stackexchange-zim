@@ -83,7 +83,57 @@ def make_Date(date):
     t_readable=t[0]+":"+t[1]
     return {'Date':d_readable,'Time':t_readable}
 
-def select_user(cursor, Id):
+def split_filename_into_subdirs(filename,length=3):
+    """Split `filename` into a path hierarchy, each path at most `length` characters long, and return the tuple `(paths,basename,n_subdirs)`."""
+    c=filename.split("/")
+    if len(c)>=2:
+        prefix="/".join(c[:-1])+"/"
+    else:
+        prefix=""
+    filename=c[-1]
+    c=filename.split(".")
+    if len(c)>=2:
+        ext=c[-1]
+        filename=".".join(c[:-1])
+    else:
+        ext=""
+        filename=filename
+    l=[filename[x:x+3] for x in range(0,len(filename),length)]
+    paths="/".join(l[:-1])
+    basename=l[-1]
+    if ext:
+        complete_basename=basename+"."+ext
+    else:
+        complete_basename=basename
+    n_subdirs=len(l)-1
+    if paths:
+        complete_paths=prefix+paths+"/"
+    else:
+        complete_paths=prefix
+    tup=(complete_paths,complete_basename,n_subdirs)
+    return tup
+
+def convert_id_to_idpath(Id):
+    path=str(Id)
+    (paths,basename,n_subdirs)=split_filename_into_subdirs(path)
+    return paths+basename
+
+def convert_question_id_to_idpath(Id,rootdir):
+    path=rootdir+"question/"+str(Id)+".html"
+    (paths,basename,n_subdirs)=split_filename_into_subdirs(path)
+    return paths+basename
+
+def convert_user_id_to_idpath(Id,rootdir):
+    path=rootdir+"user/"+str(Id)+".html"
+    (paths,basename,n_subdirs)=split_filename_into_subdirs(path)
+    return paths+basename
+
+def convert_tag_id_to_idpath(Id,rootdir):
+    path=rootdir+"tag/"+str(Id)+".html"
+    (paths,basename,n_subdirs)=split_filename_into_subdirs(path)
+    return paths+basename
+
+def select_user(cursor, Id,rootdir):
     cursor.execute('select * from Users where Id=?', (Id,))
     user=cursor.fetchone()
     if user:
@@ -92,15 +142,17 @@ def select_user(cursor, Id):
         if user["Reputation"]:
             user["ReputationHumanReadable"]=format_number_human_readable(int(user["Reputation"]))
         user["RenderDate"]=None
+        user["RootDir"]=rootdir
+        user["IdPath"]=convert_user_id_to_idpath(user["Id"],rootdir)
     return user
 
-def select_comments_for_post(cursor,PostId):
+def select_comments_for_post(cursor,PostId,rootdir):
     cursor.execute('select * from Comments where PostId=? order by CreationDate', (PostId,))
     comments=cursor.fetchall()
     for comment in comments:
-        comment["User"]=select_user(cursor,comment["UserId"])
+        comment["User"]=select_user(cursor,comment["UserId"],rootdir)
         comment["Text"]=escape_html(comment["Text"]) #escape before rewriting, and export un-escaped, so that "<" and "&" are escaped, but links are clickable
-        comment["Text"]=rewriteurl.rewrite_urls_in_text(cursor,comment["Text"],stackexchange_domain)
+        comment["Text"]=rewriteurl.rewrite_urls_in_text(cursor,comment["Text"],stackexchange_domain,rootdir)
         if comment["User"] and comment["CreationDate"]:
             comment["User"]["RenderDate"]=make_Date(comment["CreationDate"])
         if comment["Score"]=="0":
@@ -108,24 +160,31 @@ def select_comments_for_post(cursor,PostId):
     
     return comments
 
-def select_post(cursor,Id):
+def select_post(cursor,Id,rootdir):
     cursor.execute('select * from Posts where Id=?', (Id,))
     post=cursor.fetchone()
 
     if not post:
         return None
-    
-    post["Body"]=rewriteurl.rewrite_urls_in_html(cursor,post["Body"],stackexchange_domain)
-    post["OwnerUser"]=select_user(cursor,post["OwnerUserId"])
+
+    post["Body"]=rewriteurl.rewrite_urls_in_html(cursor,post["Body"],stackexchange_domain,rootdir)
+    post["OwnerUser"]=select_user(cursor,post["OwnerUserId"],rootdir)
     if post["OwnerUser"] and post["CreationDate"]:
         post["OwnerUser"]["RenderDate"]=make_Date(post["CreationDate"])
-    post["LastEditorUser"]=select_user(cursor,post["LastEditorUserId"])
+    if post["OwnerUser"]:
+        post["OwnerUser"]["RootDir"]=rootdir
+    post["LastEditorUser"]=select_user(cursor,post["LastEditorUserId"],rootdir)
     if post["LastEditorUser"] and post["LastEditDate"]:
         post["LastEditorUser"]["RenderDate"]=make_Date(post["LastEditDate"])
+    if post["LastEditorUser"]:
+        post["LastEditorUser"]["RootDir"]=rootdir
     if post["ClosedDate"]:
         post["ClosedDate"]=make_Date(post["ClosedDate"])
 
-    post["comments"]=select_comments_for_post(cursor,Id)
+    post["RootDir"]=rootdir
+    post["IdPath"]=convert_question_id_to_idpath(post["Id"],rootdir)
+
+    post["comments"]=select_comments_for_post(cursor,Id,rootdir)
 
     return post
 

@@ -2,13 +2,14 @@
 # -*- coding:utf-8 -*-
 
 import lxml.etree
+import utils
 
 def internal_url_for_question(cursor,question_id):
     cursor.execute('select Id,PostTypeId from Posts where Id=? and PostTypeId="1"',(question_id,))
     row=cursor.fetchone()
     if not row:
         return None
-    return "../question/%i.html" % row["Id"]
+    return "question/%s.html" % utils.convert_id_to_idpath(row["Id"])
 
 def internal_url_for_answer(cursor,answer_id):
     cursor.execute('select Id,ParentId from Posts where Id=? and PostTypeId="2"',(answer_id,))
@@ -16,7 +17,7 @@ def internal_url_for_answer(cursor,answer_id):
     if not row:
         return None
     assert row["ParentId"] #if this happens, there is an error in the database or the stackexchange XML dumps.
-    return "../question/%i.html#%i" % (int(row["ParentId"]),row["Id"])
+    return "question/%s.html#%i" % (utils.convert_id_to_idpath(row["ParentId"]),row["Id"])
 
 def internal_url_for_comment(cursor,comment_id):
     cursor.execute("select Id,ParentId,PostTypeId from Posts where Id=(select PostId from Comments where Id=?)",(comment_id,))
@@ -24,21 +25,21 @@ def internal_url_for_comment(cursor,comment_id):
     if not row:
         return None
     if row["PostTypeId"]=="1":
-        return "../question/%i.html" % (row["Id"],)
+        return "question/%s.html" % (utils.convert_id_to_idpath(row["Id"]),)
     elif row["PostTypeId"]=="2":
-        return "../question/%i.html#%i" % (int(row["ParentId"]),row["Id"])
+        return "question/%s.html#%i" % (utils.convert_id_to_idpath(row["ParentId"]),row["Id"])
     elif row["PostTypeId"]=="4":
         cursor.execute("select Id from Tags where ExcerptPostId=?",(row["Id"],))
         row2=cursor.fetchone()
         if not row2:
             return None
-        return "../tag/%i.html" % (row2["Id"],)
+        return "tag/%s.html" % (utils.convert_id_to_idpath(row2["Id"]),)
     elif row["PostTypeId"]=="5":
         cursor.execute("select Id from Tags where WikiPostId=?",(row["Id"],))
         row2=cursor.fetchone()
         if not row2:
             return None
-        return "../tag/%i.html" % (row2["Id"],)
+        return "tag/%s.html" % (utils.convert_id_to_idpath(row2["Id"]),)
     else:
         return None
 
@@ -47,14 +48,14 @@ def internal_url_for_tag_name(cursor,tag_name):
     row=cursor.fetchone()
     if not row:
         return None
-    return "../tag/%i.html" % (row["Id"],)
+    return "tag/%s.html" % (utils.convert_id_to_idpath(row["Id"]),)
 
 def internal_url_for_user(cursor,user_id):
     cursor.execute("select Id from Users where Id=?",(user_id,))
     row=cursor.fetchone()
     if not row:
         return None
-    return "../user/%i.html" % (row["Id"],)
+    return "user/%s.html" % (utils.convert_id_to_idpath(row["Id"]),)
 
 def safe_int(object,default=None):
     try:
@@ -130,7 +131,7 @@ def internal_url_for_stackexchange_url(cursor,url,stackexchange_domain):
         return internal_url_for_user(cursor,user_id)
     return None
 
-def rewrite_urls_in_html(cursor,html,stackexchange_domain):
+def rewrite_urls_in_html(cursor,html,stackexchange_domain,rootdir):
     "Given the HTML fragment `html`, replace stackexchange urls that point to `stackexchange_domain` by the corresponding internal urls if they exist in the database accessible using `cursor`."
     # encapsulate the html in <html><body> tags so that the parser doesn't just parse the first tag
     html="<html><body>"+html+"</body></html>"
@@ -147,7 +148,7 @@ def rewrite_urls_in_html(cursor,html,stackexchange_domain):
             if internal_url:
                 #print href,internal_url
                 #print Id,ParentId,href,internal_url
-                atag.set("href",internal_url)
+                atag.set("href",rootdir+internal_url)
                 # add the class "internallink" to the link, so that it will be displayed not in italics, but like an internal link.
                 aclass=atag.get("class")
                 if not aclass:
@@ -167,7 +168,7 @@ def rewrite_urls_in_html(cursor,html,stackexchange_domain):
     newhtml=newhtml[12:-14]
     return newhtml
 
-def rewrite_urls_in_text(cursor,text,stackexchange_domain):
+def rewrite_urls_in_text(cursor,text,stackexchange_domain,rootdir):
     "Given the text fragment `text`, replace stackexchange urls that point to `stackexchange_domain` by the corresponding internal urls if they exist in the database accessible using `cursor`."
     newtext=u""
     start=0
@@ -200,7 +201,7 @@ def rewrite_urls_in_text(cursor,text,stackexchange_domain):
         internal_url=internal_url_for_stackexchange_url(cursor,href,stackexchange_domain)
         #print href,internal_url
         if internal_url:
-            newlink="<a class=\"internallink\" href=\""+internal_url+"\">"+text[pos:end]+"</a>"
+            newlink="<a class=\"internallink\" href=\""+rootdir+internal_url+"\">"+text[pos:end]+"</a>"
             newtext+=text[start:pos]+newlink
             start=end
         else:

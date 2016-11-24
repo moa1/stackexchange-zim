@@ -62,6 +62,7 @@ Question 17 / 35823053 at 2016-08-30 20:05:19.007552
 
 from utils import *
 import codecs
+import os
 import templates
 
 #PostTypeId="1" means question
@@ -71,10 +72,13 @@ import templates
 #PostTypeId="6" means election text
 #PostTypeId="7" means posts made by stackexchange? (TODO)
 
-def select_answer(cursor, Id):
-    return select_post(cursor,Id)
+def question_flat_filename(post_id):
+    return 
 
-def select_answers_for_question(cursor,QuestionId):
+def select_answer(cursor, Id,rootdir):
+    return select_post(cursor,Id,rootdir)
+
+def select_answers_for_question(cursor,QuestionId,rootdir):
     cursor.execute('select AcceptedAnswerId from Posts where Id=?', (QuestionId,))
     accepted_answer_id=cursor.fetchone()["AcceptedAnswerId"]
     if accepted_answer_id:
@@ -84,7 +88,7 @@ def select_answers_for_question(cursor,QuestionId):
     answers_id=[row["Id"] for row in cursor]
     answers=[]
     for answer_id in answers_id:
-        answer=select_answer(cursor,answer_id)
+        answer=select_answer(cursor,answer_id,rootdir)
         answer["accepted"]=accepted_answer_id and answer["Id"]==accepted_answer_id
         answers.append(answer)
 
@@ -99,23 +103,29 @@ def select_answers_for_question(cursor,QuestionId):
 
     return answers
 
-def select_question(cursor, Id):
-    question=select_post(cursor,Id)
+def select_question(cursor, Id, rootdir):
+    question=select_post(cursor,Id,rootdir)
     
     cursor.execute('select * from Tags where Id in (select TagId from PostsTags where PostId=?)', (Id,))
     question["Tags"]=cursor.fetchall()
+    for tag in question["Tags"]:
+        tag["RootDir"]=rootdir
+        tag["IdPath"]=convert_tag_id_to_idpath(tag["Id"],rootdir)
 
-    answers=select_answers_for_question(cursor,Id)
+    answers=select_answers_for_question(cursor,Id,rootdir)
     question["answers"]=answers
 
     return question
 
 
-def render_question(cursor, Id, renderer, PrevId, NextId):
-    question=select_question(cursor,Id)
+def render_question(cursor, Id, renderer, PrevId, NextId, rootdir):
+    question=select_question(cursor,Id,rootdir)
     # doing the next two queries in `select_question` would recurse forever.
-    question["PrevPage"]=select_question(cursor,PrevId)
-    question["NextPage"]=select_question(cursor,NextId)
+    question["PrevPage"]=select_question(cursor,PrevId,rootdir)
+    question["NextPage"]=select_question(cursor,NextId,rootdir)
+    question["RootDir"]=rootdir
+    question["PrevPage"]["RootDir"]=rootdir
+    question["NextPage"]["RootDir"]=rootdir
     return renderer.render("{{>question_html}}",question)
 
 def make_questions_html(only_ids=None):
@@ -134,12 +144,17 @@ def make_questions_html(only_ids=None):
     for (i,post_id) in enumerate(post_ids):
         print "Question",post_id,"/",max_Id,"at",str(datetime.datetime.now()),"ETA:",estimated_time_arrival(start,i,len_post_ids)
 
-        with codecs.open(file_path+"question/"+str(post_id)+".html", "w", "utf-8") as f:
+        flat_path=file_path+"question/"+str(post_id)+".html"
+        (paths,basename,n_subdirs)=split_filename_into_subdirs(flat_path)
+        html_path=paths+basename
+        if not os.access(paths,os.W_OK):
+            os.makedirs(paths)
+        with codecs.open(html_path, "w", "utf-8") as f:
             prev_post_id=post_ids[(i-1)%len_post_ids]
             next_post_id=post_ids[(i+1)%len_post_ids]
             html=None
             try:
-                html=render_question(cursor, post_id, renderer, prev_post_id, next_post_id)
+                html=render_question(cursor, post_id, renderer, prev_post_id, next_post_id,"../"*(n_subdirs+1))
             except:
                 print "Error rendering",post_id
                 bugf=open("buggy-database-entries.txt", "a")

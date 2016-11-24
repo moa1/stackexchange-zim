@@ -6,7 +6,7 @@
 }
 .userinfo {
     float: right;
-    background-color: #aaf;
+    background-color: #bbf;
     line-height: 1ex;
     padding: 0.5ex;
 }
@@ -63,7 +63,7 @@
     float: right;
     padding: 4px;
     margin-left: 1ex;
-    background-color: #aaf;
+    background-color: #ccf;
     border: 1px solid #bbb;
 }
 .reputation {
@@ -166,9 +166,9 @@ kbd {
     border: 1px solid #000;
     border-radius: 3px;
 }
-li {
+/*li {
     color: #007;
-}
+}*/
 img {
     background: #fbb;
     border: 2px dashed #f00;
