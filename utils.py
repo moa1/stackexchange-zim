@@ -167,6 +167,9 @@ def select_post(cursor,Id,rootdir):
     if not post:
         return None
 
+    if Id in (7511791,7511795): #bugfix hack for stackoverflow.com
+        post["Body"]=post["Body"].replace("<p></script></p>\n\n<p></body></p>\n\n<p></html></p>\n\n<p>No tags left unopened","<p></script></p>\n\n<p>&lt/body&gt</p>\n\n<p>&lt/html&gt</p>\n\n<p>No tags left unopened")
+
     post["Body"]=rewriteurl.rewrite_urls_in_html(cursor,post["Body"],stackexchange_domain,rootdir)
     post["OwnerUser"]=select_user(cursor,post["OwnerUserId"],rootdir)
     if post["OwnerUser"] and post["CreationDate"]:
