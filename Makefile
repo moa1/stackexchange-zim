@@ -102,7 +102,7 @@ temp/content/index.html:
 	#ln -f -s ../../se.css temp/content/
 	cp favicon.png temp/content/
 	cp se.css temp/content/
-	@echo "<html><head><meta http-equiv=\"Content-Type\" content=\"text/html; charset=utf-8\" /><title>Index of the stackexchange.com dump</title><link href=\"se.css\" rel=\"stylesheet\" type=\"text/css\"></head><body><p><h1><a class=\"internallink\" href=\"$(stackexchange_domain)/index.html\">$(stackexchange_domain) dump</a></h1></p></body></html>" > temp/content/index.html
+	@echo "<html><head><meta http-equiv=\"Content-Type\" content=\"text/html; charset=utf-8\" /><title>Index of the stackexchange.com dump</title><link href=\"se.css\" rel=\"stylesheet\" type=\"text/css\"></head><body><p><h1><a class=\"internallink\" href=\"$(stackexchange_domain)/index.html\">$(stackexchange_domain)</a></h1></p></body></html>" > temp/content/index.html
 
 content: temp/finished-content
 temp/finished-content: temp/finished-database temp/content/index.html

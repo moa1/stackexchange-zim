@@ -13,7 +13,7 @@ indices_templates={
 u"""<html>
   <head>
     <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
-    <title>{{site_type}} Index</title>
+    <title>{{Site}} {{site_type}} Index</title>
     <link href="se.css" rel="stylesheet" type="text/css">
   </head>
     <body>
@@ -24,7 +24,7 @@ u"""<html>
 <a class="internallink" href="index_tags.html">Tags Index</a>
 <a class="internallink" href="index_badges.html">Badges Index</a>
 </div>
-<h1>{{site_type}} Index</h1>
+<h1>{{Site}} {{site_type}} Index</h1>
 <p>Number of {{site_type}}: {{sites_count}}</p>
 <div class="index">
 {{#sub_indices}}
@@ -38,7 +38,7 @@ u"""<html>
 u"""<html>
   <head>
     <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
-    <title>{{site_type}} Index &quot;{{#first}}{{Title}}{{/first}}&quot; to &quot;{{#last}}{{Title}}{{/last}}&quot;</title>
+    <title>{{Site}} {{site_type}} Index &quot;{{#first}}{{Title}}{{/first}}&quot; to &quot;{{#last}}{{Title}}{{/last}}&quot;</title>
     <link href="se.css" rel="stylesheet" type="text/css">
   </head>
     <body>
@@ -47,7 +47,7 @@ u"""<html>
 {{#PrevPage}}Prev: <a class="internallink" href="{{filename}}">{{filename}}</a>{{/PrevPage}}
 <a class="internallink" href="{{index_filename}}">{{site_type}} Index</a>
 </div>
-<h1>{{site_type}} Index &quot;{{#first}}{{Title}}{{/first}}&quot; to &quot;{{#last}}{{Title}}{{/last}}&quot;</h1>
+<h1>{{Site}} {{site_type}} Index &quot;{{#first}}{{Title}}{{/first}}&quot; to &quot;{{#last}}{{Title}}{{/last}}&quot;</h1>
 <div class="index">
 {{#sub_sites}}
 <a class="internallink" href="{{Link}}">{{Title}}</a>
@@ -90,6 +90,7 @@ def write_index_html(cursor, select_entry, site_type, sites, file_mask, sub_inde
         sub_index["sub_sites"]=sub_sites
         sub_index["first"]=sub_sites[0]
         sub_index["last"]=sub_sites[-1]
+        sub_index["Site"]=stackexchange_domain
         with codecs.open(file_path+sub_index["filename"], "w", "utf-8") as f:
             f.write(renderer.render('{{>sites_sub_index_template}}',sub_index))
         # free memory
@@ -99,8 +100,8 @@ def write_index_html(cursor, select_entry, site_type, sites, file_mask, sub_inde
 
     print "writing "+index_filename
     with codecs.open(file_path+index_filename, "w", "utf-8") as f:
-        f.write(renderer.render('{{>sites_index_template}}',{"site_type":site_type,"sites_count":len(sites),"sub_indices":sub_indices}))
-    
+        f.write(renderer.render('{{>sites_index_template}}',{"site_type":site_type,"sites_count":len(sites),"sub_indices":sub_indices,"Site":stackexchange_domain}))
+
 def write_badges_index_html(cursor):
     cursor.row_factory = sqlite3.Row #saves memory compared to =dict_factory
     cursor.execute('select distinct Name as Id from Badges order by Name')
@@ -147,14 +148,14 @@ def write_main_index_html(cursor):
     template=u"""<html>
   <head>
     <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
-    <title>Index</title>
+    <title>{{Site}} Index</title>
     <link href="se.css" rel="stylesheet" type="text/css">
   </head>
     <body>
 <div class="linkheader">
 <a class="internallink" href="../index.html">Home</a>
 </div>
-<h1>Index</h1>
+<h1>{{Site}} Index</h1>
 <p><a class="internallink" href="index_users.html">Index of {{UsersCount}} users by name</a></p>
 <p><a class="internallink" href="index_users_by_reputation.html">Index of {{UsersCount}} users by reputation</a></p>
 <p><a class="internallink" href="index_questions_by_score.html">Index of {{QuestionsCount}} questions by score</a></p>
@@ -164,13 +165,14 @@ def write_main_index_html(cursor):
   </body>
 </html>"""
 
-    cursor.row_factory = sqlite3.Row #saves memory compared to =dict_factory
+    cursor.row_factory = dict_factory #sqlite3.Row disallows assignment
     cursor.execute("""select
 (select count(*) from Users) as UsersCount,
 (select count(*) from Posts where PostTypeId="1") as QuestionsCount,
 (select count(*) from Tags) as TagsCount,
 (select count(distinct Name) from Badges) as BadgesCount""")
     data=cursor.fetchone()
+    data["Site"]=stackexchange_domain
 
     with codecs.open(file_path+"index.html", "w", "utf-8") as f:
         f.write(renderer.render(template,data))
